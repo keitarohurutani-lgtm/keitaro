@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Trend } from "@/generated/prisma/client";
-import type { Persona } from "@/generated/prisma/enums";
 import { PERSONA_LABEL, PERSONA_OPTIONS } from "@/lib/persona";
+import { usePersonaPreference } from "@/lib/use-persona-preference";
 import { toast } from "@/lib/toast";
 
 export default function IdeaGenerator({
@@ -16,13 +16,9 @@ export default function IdeaGenerator({
 }) {
   const router = useRouter();
   const [trendId, setTrendId] = useState(initialTrendId ?? trends[0]?.id ?? "");
-  const [persona, setPersona] = useState<Persona>("GENKI");
+  const [persona, setPersona] = usePersonaPreference();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const handlePersonaChange = (value: Persona) => {
-    setPersona(value);
-  };
 
   const handleGenerate = async () => {
     if (!trendId) return;
@@ -96,7 +92,7 @@ export default function IdeaGenerator({
               <button
                 key={option}
                 type="button"
-                onClick={() => handlePersonaChange(option)}
+                onClick={() => setPersona(option)}
                 className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
                   persona === option
                     ? "bg-al-black text-white"

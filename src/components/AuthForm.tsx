@@ -137,6 +137,12 @@ export default function AuthForm({ mode, next }: { mode: Mode; next?: string }) 
             </>
           )}
         </p>
+
+        {mode === "login" && (
+          <p className="mt-3 text-center text-xs text-al-gray-500">
+            ログインできない場合は、運営にお問い合わせください。
+          </p>
+        )}
       </div>
     </div>
   );
