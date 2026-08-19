@@ -55,16 +55,16 @@ export default function IdeaList({ ideas }: { ideas: IdeaWithTrend[] }) {
           <article
             key={idea.id}
             id={idea.id}
-            className="scroll-mt-24 overflow-hidden rounded-2xl border border-al-gray-200"
+            className="al-flyer-card scroll-mt-24 overflow-hidden rounded-2xl"
           >
             {/* TREND */}
-            <div className="flex items-center gap-3 border-b border-al-gray-100 bg-al-gray-50 px-5 py-3">
+            <div className="flex items-center gap-3 border-b-2 border-al-black bg-al-gray-50 px-5 py-3">
               <span className="font-display text-[11px] font-bold tracking-widest text-al-gray-400">
                 TREND
               </span>
               <CategoryTag category={idea.trend.category} />
               <span className="text-sm font-bold">{idea.trend.name}</span>
-              <span className="ml-auto rounded-full bg-al-black px-2 py-0.5 font-display text-xs font-bold text-al-lime">
+              <span className="ml-auto -rotate-3 rounded-full border-2 border-al-lime bg-al-black px-2 py-0.5 font-display text-xs font-bold text-al-lime">
                 {idea.trend.growth}
               </span>
             </div>

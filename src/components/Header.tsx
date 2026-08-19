@@ -21,7 +21,7 @@ export default function Header({ user }: { user: { displayName: string } | null 
   };
 
   return (
-    <header className="sticky top-0 z-40 hidden border-b border-al-gray-200 bg-white/90 backdrop-blur md:block">
+    <header className="sticky top-0 z-40 hidden border-b-2 border-al-black bg-white/95 backdrop-blur md:block">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-8 py-4">
         <Logo className="text-xl" />
         <nav className="flex items-center gap-1">
@@ -31,7 +31,7 @@ export default function Header({ user }: { user: { displayName: string } | null 
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group flex flex-col rounded-xl px-4 py-2 transition-colors ${
+                className={`group flex flex-col rounded-md px-4 py-2 transition-colors ${
                   active ? "bg-al-black text-white" : "text-al-black hover:bg-al-gray-100"
                 }`}
               >

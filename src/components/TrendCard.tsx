@@ -13,15 +13,15 @@ export default function TrendCard({
 }) {
   return (
     <article
-      className={`flex flex-col overflow-hidden rounded-2xl border border-al-gray-200 bg-white ${className}`}
+      className={`al-flyer-card relative flex flex-col overflow-hidden rounded-xl bg-white ${className}`}
     >
       <div
-        className="relative flex h-32 items-end p-4"
+        className="relative flex h-32 items-start justify-end p-3"
         style={{
           background: `linear-gradient(135deg, ${trend.thumbnailFrom}, ${trend.thumbnailTo})`,
         }}
       >
-        <span className="rounded-full bg-white/90 px-2.5 py-1 font-display text-xs font-bold text-al-black">
+        <span className="al-sticker rounded-full px-2.5 py-1 font-display text-xs font-bold text-al-black">
           {trend.growth}
         </span>
       </div>

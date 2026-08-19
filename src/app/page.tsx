@@ -26,8 +26,16 @@ export default async function TodayPage() {
   return (
     <div>
       {/* HERO */}
-      <section className="bg-al-black px-6 py-14 text-white md:px-8 md:py-20">
-        <div className="mx-auto max-w-6xl">
+      <section className="relative overflow-hidden bg-al-black px-6 py-14 text-white md:px-8 md:py-20">
+        <div
+          className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 bg-al-pink opacity-20 md:h-96 md:w-96"
+          style={{ clipPath: "polygon(30% 0, 100% 0, 100% 100%, 0 70%)" }}
+        />
+        <div
+          className="pointer-events-none absolute -bottom-16 left-1/3 h-40 w-40 bg-al-lime opacity-10"
+          style={{ clipPath: "polygon(0 0, 100% 20%, 80% 100%, 0 100%)" }}
+        />
+        <div className="relative mx-auto max-w-6xl">
           <p className="font-display text-xs font-bold tracking-[0.2em] text-al-lime">
             TODAY&apos;S ASOBI LAB
           </p>
@@ -100,7 +108,7 @@ export default async function TodayPage() {
               <Link
                 key={item.step}
                 href={item.href}
-                className="rounded-xl border border-al-gray-200 p-4 transition-colors hover:border-al-black"
+                className="al-flyer-card rounded-xl p-4 transition-transform hover:-translate-y-0.5"
               >
                 <p className="font-display text-xs font-bold text-al-gray-400">
                   STEP {i + 1}
@@ -146,7 +154,7 @@ export default async function TodayPage() {
           <div className="grid gap-4 md:grid-cols-3">
             <Link
               href="/idea"
-              className="rounded-2xl bg-al-purple p-5 text-white transition-transform hover:scale-[1.01]"
+              className="rounded-2xl border-2 border-al-black bg-al-purple p-5 text-white transition-transform hover:scale-[1.01]"
             >
               <p className="font-display text-xs font-bold tracking-widest">IDEA</p>
               <p className="mt-2 font-display text-lg font-bold">投稿ネタを探す</p>
@@ -154,7 +162,7 @@ export default async function TodayPage() {
             </Link>
             <Link
               href="/analyze?tab=check"
-              className="rounded-2xl bg-al-blue p-5 text-white transition-transform hover:scale-[1.01]"
+              className="rounded-2xl border-2 border-al-black bg-al-blue p-5 text-white transition-transform hover:scale-[1.01]"
             >
               <p className="font-display text-xs font-bold tracking-widest">POST CHECK</p>
               <p className="mt-2 font-display text-lg font-bold">動画をチェック</p>
@@ -162,7 +170,7 @@ export default async function TodayPage() {
             </Link>
             <Link
               href="/analyze?tab=benchmark"
-              className="rounded-2xl bg-al-black p-5 text-white transition-transform hover:scale-[1.01]"
+              className="rounded-2xl border-2 border-al-lime bg-al-black p-5 text-white transition-transform hover:scale-[1.01]"
             >
               <p className="font-display text-xs font-bold tracking-widest">BENCHMARK</p>
               <p className="mt-2 font-display text-lg font-bold">伸びている投稿と比べる</p>
@@ -191,7 +199,7 @@ export default async function TodayPage() {
               { label: "参考にした投稿", value: counts.referencedPosts },
               { label: "トレンドチェック", value: counts.trendChecks },
             ].map((stat) => (
-              <div key={stat.label} className="rounded-xl border border-al-gray-200 p-4">
+              <div key={stat.label} className="al-flyer-card rounded-xl p-4">
                 <p className="font-display text-3xl font-bold">{stat.value}</p>
                 <p className="mt-1 text-xs text-al-gray-500">{stat.label}</p>
               </div>

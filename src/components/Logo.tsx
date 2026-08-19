@@ -10,9 +10,15 @@ export default function Logo({
   return (
     <Link
       href="/"
-      className={`font-display font-bold tracking-tight ${variant === "dark" ? "text-al-black" : "text-white"} ${className}`}
+      className={`group font-display font-bold tracking-tighter ${variant === "dark" ? "text-al-black" : "text-white"} ${className}`}
     >
-      ASOBI<span className="text-al-pink">LAB</span>
+      <span className="inline-block -skew-x-6">
+        ASOBI
+        <span className="relative text-al-pink">
+          LAB
+          <span className="absolute -bottom-0.5 left-0 h-[3px] w-full bg-al-lime transition-transform duration-150 group-hover:scale-x-0" />
+        </span>
+      </span>
     </Link>
   );
 }

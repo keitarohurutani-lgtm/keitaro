@@ -50,7 +50,7 @@ export default async function ReportPage() {
           { label: "参考にした投稿", value: counts.referencedPosts, accent: "text-al-pink" },
           { label: "トレンドチェック", value: counts.trendChecks, accent: "text-al-black" },
         ].map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-al-gray-200 p-4">
+          <div key={stat.label} className="al-flyer-card rounded-xl p-4">
             <p className={`font-display text-3xl font-bold ${stat.accent}`}>{stat.value}</p>
             <p className="mt-1 text-xs text-al-gray-500">{stat.label}</p>
           </div>
@@ -58,7 +58,7 @@ export default async function ReportPage() {
       </div>
 
       {/* Weekly chart */}
-      <div className="mt-8 rounded-2xl border border-al-gray-200 p-5">
+      <div className="al-flyer-card mt-8 rounded-2xl p-5">
         <div className="flex items-baseline justify-between">
           <h2 className="font-display text-lg font-bold">週間アクティビティ</h2>
           <p className="font-display text-sm font-bold text-al-gray-500">

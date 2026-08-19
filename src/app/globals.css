@@ -70,3 +70,18 @@ body {
   background: var(--al-gray-300);
   border-radius: 999px;
 }
+
+/* ステッカー風バッジ：フライヤー/ZINEっぽい、少し傾いた黒枠タグ */
+.al-sticker {
+  display: inline-flex;
+  align-items: center;
+  border: 2px solid var(--al-black);
+  background: var(--al-white);
+  transform: rotate(-4deg);
+  box-shadow: 2px 2px 0 var(--al-black);
+}
+
+/* ストリート/フライヤー感のある太い黒枠カード */
+.al-flyer-card {
+  border: 2px solid var(--al-black);
+}

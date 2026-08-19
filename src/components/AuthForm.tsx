@@ -47,8 +47,16 @@ export default function AuthForm({ mode, next }: { mode: Mode; next?: string }) 
   };
 
   return (
-    <div className="flex min-h-screen flex-col justify-center bg-al-black px-6 py-16 text-white">
-      <div className="mx-auto w-full max-w-sm">
+    <div className="relative flex min-h-screen flex-col justify-center overflow-hidden bg-al-black px-6 py-16 text-white">
+      <div
+        className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 bg-al-purple opacity-20"
+        style={{ clipPath: "polygon(30% 0, 100% 0, 100% 100%, 0 70%)" }}
+      />
+      <div
+        className="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 bg-al-pink opacity-10"
+        style={{ clipPath: "polygon(0 0, 100% 20%, 80% 100%, 0 100%)" }}
+      />
+      <div className="relative mx-auto w-full max-w-sm">
         <Logo variant="light" className="text-2xl" />
 
         <p className="mt-8 font-display text-xs font-bold tracking-[0.2em] text-al-lime">

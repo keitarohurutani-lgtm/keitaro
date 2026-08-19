@@ -21,10 +21,13 @@ export default function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-1 flex-col items-center gap-0.5 rounded-lg py-1.5 transition-colors ${
+              className={`relative flex flex-1 flex-col items-center gap-0.5 rounded-lg py-1.5 transition-colors ${
                 active ? "text-al-lime" : "text-al-gray-400"
               }`}
             >
+              {active && (
+                <span className="absolute -top-1.5 h-[3px] w-6 rounded-full bg-al-lime" />
+              )}
               {Icon && <Icon className="h-5 w-5" />}
               <span className="font-display text-[10px] font-bold tracking-wide">
                 {item.label}
