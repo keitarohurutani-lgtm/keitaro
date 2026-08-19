@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import "./globals.css";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
+import MainContent from "@/components/MainContent";
+import ToastProvider from "@/components/ToastProvider";
 import { getCurrentUser } from "@/lib/auth";
 
 const spaceGrotesk = Space_Grotesk({
@@ -36,8 +38,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <Suspense fallback={<div className="hidden h-[73px] border-b border-al-gray-200 md:block" />}>
           <Header user={user ? { displayName: user.displayName } : null} />
         </Suspense>
-        <main className="flex-1 pb-24 md:pb-0">{children}</main>
+        <MainContent>{children}</MainContent>
         <BottomNav />
+        <ToastProvider />
       </body>
     </html>
   );

@@ -2,10 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { mobileNav } from "@/lib/nav";
+import { mobileNav, AUTH_PATHS } from "@/lib/nav";
 import { navIcons } from "./icons";
-
-const AUTH_PATHS = new Set(["/login", "/register"]);
 
 export default function BottomNav() {
   const pathname = usePathname();

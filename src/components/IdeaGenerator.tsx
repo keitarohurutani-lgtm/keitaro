@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Trend } from "@/generated/prisma/client";
 import type { Persona } from "@/generated/prisma/enums";
 import { PERSONA_LABEL, PERSONA_OPTIONS } from "@/lib/persona";
+import { toast } from "@/lib/toast";
 
 export default function IdeaGenerator({
   trends,
@@ -37,10 +38,13 @@ export default function IdeaGenerator({
       if (!res.ok) {
         throw new Error(json.error ?? "企画の生成に失敗しました。");
       }
+      toast("AIが企画を提案しました");
       router.refresh();
       router.push(`/idea?trendId=${trendId}#${json.idea.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "企画の生成に失敗しました。");
+      const message = err instanceof Error ? err.message : "企画の生成に失敗しました。";
+      setError(message);
+      toast(message, "error");
     } finally {
       setLoading(false);
     }

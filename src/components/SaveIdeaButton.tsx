@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "@/lib/toast";
 
 export default function SaveIdeaButton({
   ideaId,
@@ -21,6 +22,7 @@ export default function SaveIdeaButton({
       const json = await res.json();
       if (res.ok) {
         setSaved(json.idea.saved);
+        toast(json.idea.saved ? "企画を保存しました" : "保存を解除しました");
         router.refresh();
       }
     } finally {

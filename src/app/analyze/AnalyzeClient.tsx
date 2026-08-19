@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { BenchmarkVideo, PostCheckCut } from "@/lib/data";
+import { toast } from "@/lib/toast";
 
 type Tab = "check" | "benchmark";
 
@@ -73,9 +74,12 @@ function PostCheckPanel() {
       if (!res.ok) throw new Error("分析の記録に失敗しました。");
       const json = await res.json();
       setCuts(json.cuts);
+      toast("分析が完了しました");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "分析に失敗しました。");
+      const message = err instanceof Error ? err.message : "分析に失敗しました。";
+      setError(message);
+      toast(message, "error");
     } finally {
       setLoading(false);
     }
@@ -175,9 +179,12 @@ function BenchmarkPanel() {
       if (!res.ok) throw new Error("比較の記録に失敗しました。");
       const json = await res.json();
       setResult(json);
+      toast("比較が完了しました");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "比較に失敗しました。");
+      const message = err instanceof Error ? err.message : "比較に失敗しました。";
+      setError(message);
+      toast(message, "error");
     } finally {
       setLoading(false);
     }

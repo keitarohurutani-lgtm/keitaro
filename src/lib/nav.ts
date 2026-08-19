@@ -4,6 +4,9 @@ export type NavItem = {
   sub: string;
 };
 
+// ヘッダー・ボトムナビ非表示、メインの余白なしを揃えるページ
+export const AUTH_PATHS = new Set(["/login", "/register"]);
+
 export const desktopNav: NavItem[] = [
   { href: "/", label: "TODAY", sub: "今日のアクション" },
   { href: "/trend", label: "TREND", sub: "トレンド" },

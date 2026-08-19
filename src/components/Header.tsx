@@ -2,11 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { desktopNav } from "@/lib/nav";
+import { desktopNav, AUTH_PATHS } from "@/lib/nav";
 import Logo from "./Logo";
 import LogoutButton from "./LogoutButton";
-
-const AUTH_PATHS = new Set(["/login", "/register"]);
 
 export default function Header({ user }: { user: { displayName: string } | null }) {
   const pathname = usePathname();

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Logo from "./Logo";
+import { toast } from "@/lib/toast";
 
 type Mode = "login" | "register";
 
@@ -30,6 +32,11 @@ export default function AuthForm({ mode, next }: { mode: Mode; next?: string }) 
       if (!res.ok) {
         throw new Error(json.error ?? "処理に失敗しました。");
       }
+      toast(
+        mode === "login"
+          ? `おかえりなさい、${json.user.displayName}さん`
+          : `ようこそ、${json.user.displayName}さん！`
+      );
       router.push(next && next.startsWith("/") ? next : "/");
       router.refresh();
     } catch (err) {
@@ -40,93 +47,97 @@ export default function AuthForm({ mode, next }: { mode: Mode; next?: string }) 
   };
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-73px)] max-w-md flex-col justify-center px-6 py-16">
-      <p className="font-display text-xs font-bold tracking-[0.2em] text-al-pink">
-        {mode === "login" ? "LOGIN" : "SIGN UP"}
-      </p>
-      <h1 className="mt-2 font-display text-3xl font-bold">
-        {mode === "login" ? "おかえりなさい" : "ASOBI LABへようこそ"}
-      </h1>
-      <p className="mt-2 text-sm text-al-gray-500">
-        {mode === "login"
-          ? "登録したメールアドレスでログインしてください。"
-          : "アカウントを作成して、あなただけのSNS活動レポートを始めましょう。"}
-      </p>
+    <div className="flex min-h-screen flex-col justify-center bg-al-black px-6 py-16 text-white">
+      <div className="mx-auto w-full max-w-sm">
+        <Logo variant="light" className="text-2xl" />
 
-      <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-        {mode === "register" && (
+        <p className="mt-8 font-display text-xs font-bold tracking-[0.2em] text-al-lime">
+          {mode === "login" ? "LOGIN" : "SIGN UP"}
+        </p>
+        <h1 className="mt-2 font-display text-3xl font-bold">
+          {mode === "login" ? "おかえりなさい" : "ASOBI LABへようこそ"}
+        </h1>
+        <p className="mt-2 text-sm text-al-gray-300">
+          {mode === "login"
+            ? "登録したメールアドレスでログインしてください。"
+            : "アカウントを作成して、あなただけのSNS活動レポートを始めましょう。"}
+        </p>
+
+        <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+          {mode === "register" && (
+            <div>
+              <label className="mb-1.5 block font-display text-xs font-bold text-al-gray-300">
+                表示名
+              </label>
+              <input
+                type="text"
+                required
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="w-full rounded-xl border border-transparent bg-white px-3 py-2.5 text-sm text-al-black outline-none focus:border-al-pink"
+                placeholder="例：ひなの"
+              />
+            </div>
+          )}
           <div>
-            <label className="mb-1.5 block font-display text-xs font-bold text-al-gray-500">
-              表示名
+            <label className="mb-1.5 block font-display text-xs font-bold text-al-gray-300">
+              メールアドレス
             </label>
             <input
-              type="text"
+              type="email"
               required
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full rounded-xl border border-al-gray-200 px-3 py-2.5 text-sm"
-              placeholder="例：ひなの"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-xl border border-transparent bg-white px-3 py-2.5 text-sm text-al-black outline-none focus:border-al-pink"
+              placeholder="you@example.com"
             />
           </div>
-        )}
-        <div>
-          <label className="mb-1.5 block font-display text-xs font-bold text-al-gray-500">
-            メールアドレス
-          </label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-xl border border-al-gray-200 px-3 py-2.5 text-sm"
-            placeholder="you@example.com"
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block font-display text-xs font-bold text-al-gray-500">
-            パスワード
-          </label>
-          <input
-            type="password"
-            required
-            minLength={mode === "register" ? 8 : undefined}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-xl border border-al-gray-200 px-3 py-2.5 text-sm"
-            placeholder={mode === "register" ? "8文字以上" : ""}
-          />
-        </div>
+          <div>
+            <label className="mb-1.5 block font-display text-xs font-bold text-al-gray-300">
+              パスワード
+            </label>
+            <input
+              type="password"
+              required
+              minLength={mode === "register" ? 8 : undefined}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-xl border border-transparent bg-white px-3 py-2.5 text-sm text-al-black outline-none focus:border-al-pink"
+              placeholder={mode === "register" ? "8文字以上" : ""}
+            />
+          </div>
 
-        {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>
-        )}
+          {error && (
+            <p className="rounded-lg bg-al-pink/10 px-3 py-2 text-xs text-al-pink">{error}</p>
+          )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-full bg-al-black px-6 py-3 font-display text-sm font-bold text-white transition-colors hover:bg-al-gray-600 disabled:opacity-60"
-        >
-          {loading ? "処理中…" : mode === "login" ? "ログイン" : "アカウントを作成"}
-        </button>
-      </form>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-full bg-al-pink px-6 py-3 font-display text-sm font-bold text-white transition-transform hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100"
+          >
+            {loading ? "処理中…" : mode === "login" ? "ログイン" : "アカウントを作成"}
+          </button>
+        </form>
 
-      <p className="mt-6 text-center text-sm text-al-gray-500">
-        {mode === "login" ? (
-          <>
-            アカウントをお持ちでない方は{" "}
-            <Link href="/register" className="font-bold text-al-purple hover:underline">
-              新規登録
-            </Link>
-          </>
-        ) : (
-          <>
-            すでにアカウントをお持ちの方は{" "}
-            <Link href="/login" className="font-bold text-al-purple hover:underline">
-              ログイン
-            </Link>
-          </>
-        )}
-      </p>
+        <p className="mt-6 text-center text-sm text-al-gray-300">
+          {mode === "login" ? (
+            <>
+              アカウントをお持ちでない方は{" "}
+              <Link href="/register" className="font-bold text-al-lime hover:underline">
+                新規登録
+              </Link>
+            </>
+          ) : (
+            <>
+              すでにアカウントをお持ちの方は{" "}
+              <Link href="/login" className="font-bold text-al-lime hover:underline">
+                ログイン
+              </Link>
+            </>
+          )}
+        </p>
+      </div>
     </div>
   );
 }
