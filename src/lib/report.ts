@@ -1,24 +1,24 @@
 import { prisma } from "@/lib/prisma";
 
-export async function getReportCounts() {
+export async function getReportCounts(userId: string) {
   const [analyzedPosts, savedIdeas, referencedPosts, trendChecks] = await Promise.all([
-    prisma.activity.count({ where: { type: "POST_CHECK" } }),
-    prisma.idea.count({ where: { saved: true } }),
-    prisma.activity.count({ where: { type: "BENCHMARK" } }),
-    prisma.activity.count({ where: { type: "TREND_CHECK" } }),
+    prisma.activity.count({ where: { userId, type: "POST_CHECK" } }),
+    prisma.idea.count({ where: { userId, saved: true } }),
+    prisma.activity.count({ where: { userId, type: "BENCHMARK" } }),
+    prisma.activity.count({ where: { userId, type: "TREND_CHECK" } }),
   ]);
   return { analyzedPosts, savedIdeas, referencedPosts, trendChecks };
 }
 
 const WEEKDAY_LABEL = ["日", "月", "火", "水", "木", "金", "土"];
 
-export async function getWeeklyActivity(referenceDate: Date) {
+export async function getWeeklyActivity(userId: string, referenceDate: Date) {
   const start = new Date(referenceDate);
   start.setHours(0, 0, 0, 0);
   start.setDate(start.getDate() - 6);
 
   const activities = await prisma.activity.findMany({
-    where: { createdAt: { gte: start } },
+    where: { userId, createdAt: { gte: start } },
     select: { createdAt: true },
   });
 

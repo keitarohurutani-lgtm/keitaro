@@ -1,8 +1,10 @@
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import CategoryTag from "@/components/CategoryTag";
 import IdeaGenerator from "@/components/IdeaGenerator";
 import SaveIdeaButton from "@/components/SaveIdeaButton";
 import { PERSONA_LABEL } from "@/lib/persona";
+import { getCurrentUserId } from "@/lib/auth";
 import type { Persona } from "@/generated/prisma/enums";
 
 export default async function IdeaPage({
@@ -10,11 +12,15 @@ export default async function IdeaPage({
 }: {
   searchParams: Promise<{ trendId?: string }>;
 }) {
+  const userId = await getCurrentUserId();
+  if (!userId) redirect("/login");
+
   const { trendId } = await searchParams;
 
   const [trends, ideas] = await Promise.all([
     prisma.trend.findMany({ orderBy: { fetchedAt: "desc" } }),
     prisma.idea.findMany({
+      where: { userId },
       orderBy: { createdAt: "desc" },
       include: { trend: true },
     }),

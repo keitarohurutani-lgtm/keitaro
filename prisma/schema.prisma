@@ -32,6 +32,19 @@ enum Persona {
   SEITOHA // 正統派
 }
 
+// タレント本人のアカウント。企画・活動履歴はユーザーごとに分離される。
+// トレンド(Trend)はユーザーに紐付かない共有データのまま。
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String
+  createdAt    DateTime @default(now())
+
+  ideas      Idea[]
+  activities Activity[]
+}
+
 // トレンド情報。SEED=初期投入データ、YOUTUBE=YouTube Data APIから同期。
 // TikTok/Instagramは公式APIの審査が下り次第、同じテーブルにsource値を追加して連携する想定。
 model Trend {
@@ -45,8 +58,10 @@ model Trend {
   thumbnailFrom String
   thumbnailTo   String
   source        TrendSource @default(SEED)
-  sourceLabel   String? // 例: チャンネル名、投稿者名
-  sourceUrl     String?
+  sourceLabel   String? // 例: チャンネル名、投稿者名（＝参考にできる投稿者）
+  sourceUrl     String? // 参考リンク（実データ取得時のみ。ダミーデータでは捏造しない）
+  artistName    String? // 音源カテゴリの場合の歌手・アーティスト名
+  songTitle     String? // 音源カテゴリの場合の曲名
   fetchedAt     DateTime    @default(now())
 
   ideas Idea[]
@@ -55,8 +70,11 @@ model Trend {
 }
 
 // AIが生成した投稿企画。generatedByAIがtrueのものはGemini生成、falseは初期シードデータ。
+// userIdで所有者を分離し、他のタレントの企画が見えないようにする。
 model Idea {
   id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   trendId       String
   trend         Trend    @relation(fields: [trendId], references: [id], onDelete: Cascade)
   persona       Persona?
@@ -72,17 +90,21 @@ model Idea {
   generatedByAI Boolean  @default(false)
   createdAt     DateTime @default(now())
 
+  @@index([userId])
   @@index([saved])
   @@index([createdAt])
 }
 
-// MY REPORTの活動ログ・カウントの元データ
+// MY REPORTの活動ログ・カウントの元データ。userIdで所有者を分離する。
 model Activity {
   id        String       @id @default(uuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      ActivityType
   text      String
   createdAt DateTime     @default(now())
 
+  @@index([userId])
   @@index([type])
   @@index([createdAt])
 }

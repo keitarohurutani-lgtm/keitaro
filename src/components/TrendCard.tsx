@@ -35,6 +35,12 @@ export default function TrendCard({
           )}
         </div>
         <h3 className="font-display text-base font-bold leading-snug">{trend.name}</h3>
+        {(trend.artistName || trend.songTitle) && (
+          <p className="font-display text-sm font-bold text-al-purple">
+            🎵 {trend.artistName ?? "アーティスト不明"}
+            {trend.songTitle ? ` - ${trend.songTitle}` : ""}
+          </p>
+        )}
         <p className="text-sm leading-relaxed text-al-gray-600">{trend.description}</p>
         <div className="mt-1 space-y-1 border-t border-al-gray-100 pt-2 text-xs leading-relaxed text-al-gray-500">
           <p>
@@ -46,6 +52,16 @@ export default function TrendCard({
             {trend.howToUse}
           </p>
         </div>
+        {trend.sourceUrl && (
+          <a
+            href={trend.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-al-blue hover:underline"
+          >
+            参考：{trend.sourceLabel ?? "元動画"}を見る →
+          </a>
+        )}
         {footer && <div className="mt-2">{footer}</div>}
       </div>
     </article>

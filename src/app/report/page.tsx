@@ -1,16 +1,22 @@
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getReportCounts, getWeeklyActivity, formatRelativeDate } from "@/lib/report";
+import { getCurrentUser } from "@/lib/auth";
+import LogoutButton from "@/components/LogoutButton";
 
 // 活動集計・週間アクティビティは毎回のDB最新状態を反映する必要があるため、
 // ビルド時の静的プリレンダリングを無効化する。
 export const dynamic = "force-dynamic";
 
 export default async function ReportPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
   const now = new Date();
   const [counts, weekly, recentActivities] = await Promise.all([
-    getReportCounts(),
-    getWeeklyActivity(now),
-    prisma.activity.findMany({ orderBy: { createdAt: "desc" }, take: 6 }),
+    getReportCounts(user.id),
+    getWeeklyActivity(user.id, now),
+    prisma.activity.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 6 }),
   ]);
 
   const maxCount = Math.max(...weekly.map((d) => d.count), 1);
@@ -18,12 +24,20 @@ export default async function ReportPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10 md:px-8">
-      <p className="font-display text-xs font-bold tracking-[0.2em] text-al-gray-500">
-        MY REPORT
-      </p>
-      <h1 className="mt-2 font-display text-3xl font-bold md:text-4xl">
-        SNS活動を振り返る
-      </h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-display text-xs font-bold tracking-[0.2em] text-al-gray-500">
+            MY REPORT
+          </p>
+          <h1 className="mt-2 font-display text-3xl font-bold md:text-4xl">
+            SNS活動を振り返る
+          </h1>
+        </div>
+        <div className="pt-1 text-right">
+          <p className="font-display text-sm font-bold">{user.displayName}</p>
+          <LogoutButton className="mt-1" />
+        </div>
+      </div>
       <p className="mt-2 max-w-xl text-sm text-al-gray-500">
         投稿・分析・保存した企画など、あなたの活動量を可視化します。継続の振り返りに使ってみましょう。
       </p>

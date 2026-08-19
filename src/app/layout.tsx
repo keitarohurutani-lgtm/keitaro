@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import "./globals.css";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
+import { getCurrentUser } from "@/lib/auth";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -23,7 +24,9 @@ export const metadata: Metadata = {
     "SNSを、もっと楽しく。もっと戦略的に。タレントのためのSNS活動支援ラボ、ASOBI LAB。",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const user = await getCurrentUser();
+
   return (
     <html
       lang="ja"
@@ -31,7 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-white text-al-black">
         <Suspense fallback={<div className="hidden h-[73px] border-b border-al-gray-200 md:block" />}>
-          <Header />
+          <Header user={user ? { displayName: user.displayName } : null} />
         </Suspense>
         <main className="flex-1 pb-24 md:pb-0">{children}</main>
         <BottomNav />

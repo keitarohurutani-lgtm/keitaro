@@ -4,10 +4,15 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { desktopNav } from "@/lib/nav";
 import Logo from "./Logo";
+import LogoutButton from "./LogoutButton";
 
-export default function Header() {
+const AUTH_PATHS = new Set(["/login", "/register"]);
+
+export default function Header({ user }: { user: { displayName: string } | null }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  if (AUTH_PATHS.has(pathname)) return null;
 
   const isActive = (href: string) => {
     const [hrefPath, hrefQuery] = href.split("?");
@@ -46,6 +51,12 @@ export default function Header() {
             );
           })}
         </nav>
+        {user && (
+          <div className="flex items-center gap-3 pl-4">
+            <span className="font-display text-sm font-bold">{user.displayName}</span>
+            <LogoutButton />
+          </div>
+        )}
       </div>
     </header>
   );

@@ -2,9 +2,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateIdeaFromTrend, describeAiError } from "@/lib/ai";
 import { PERSONA_OPTIONS } from "@/lib/persona";
+import { getCurrentUserId } from "@/lib/auth";
 import type { Persona } from "@/generated/prisma/enums";
 
 export async function POST(request: Request) {
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "ログインが必要です。" }, { status: 401 });
+  }
+
   let body: { trendId?: string; persona?: string };
   try {
     body = await request.json();
@@ -36,6 +42,7 @@ export async function POST(request: Request) {
 
     const idea = await prisma.idea.create({
       data: {
+        userId,
         trendId: trend.id,
         persona: persona as Persona,
         generatedByAI: true,
@@ -47,6 +54,7 @@ export async function POST(request: Request) {
 
     await prisma.activity.create({
       data: {
+        userId,
         type: "TREND_CHECK",
         text: `『${trend.name}』トレンドから企画『${idea.title}』を提案してもらいました`,
       },

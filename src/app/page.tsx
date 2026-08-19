@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getReportCounts } from "@/lib/report";
+import { getCurrentUserId } from "@/lib/auth";
 import TrendCard from "@/components/TrendCard";
 
 // このページはDBの最新状態（企画・トレンド・活動件数）を毎回反映する必要があるため、
@@ -8,13 +10,17 @@ import TrendCard from "@/components/TrendCard";
 export const dynamic = "force-dynamic";
 
 export default async function TodayPage() {
+  const userId = await getCurrentUserId();
+  if (!userId) redirect("/login");
+
   const [latestIdea, pickedTrends, counts] = await Promise.all([
     prisma.idea.findFirst({
+      where: { userId },
       orderBy: { createdAt: "desc" },
       include: { trend: true },
     }),
     prisma.trend.findMany({ take: 5, orderBy: { fetchedAt: "desc" } }),
-    getReportCounts(),
+    getReportCounts(userId),
   ]);
 
   return (

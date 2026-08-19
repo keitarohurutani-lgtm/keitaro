@@ -5,8 +5,12 @@ import { usePathname } from "next/navigation";
 import { mobileNav } from "@/lib/nav";
 import { navIcons } from "./icons";
 
+const AUTH_PATHS = new Set(["/login", "/register"]);
+
 export default function BottomNav() {
   const pathname = usePathname();
+
+  if (AUTH_PATHS.has(pathname)) return null;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-al-gray-200 bg-al-black md:hidden">

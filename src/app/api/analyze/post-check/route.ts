@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { postCheckCuts } from "@/lib/data";
+import { getCurrentUserId } from "@/lib/auth";
 
 export async function POST(request: Request) {
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "ログインが必要です。" }, { status: 401 });
+  }
+
   let body: { videoName?: string } = {};
   try {
     body = await request.json();
@@ -13,6 +19,7 @@ export async function POST(request: Request) {
 
   await prisma.activity.create({
     data: {
+      userId,
       type: "POST_CHECK",
       text: `『${videoName}』をPOST CHECKで分析しました`,
     },

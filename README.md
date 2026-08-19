@@ -17,14 +17,25 @@ npm run dev    # http://localhost:3000
 | 変数 | 用途 | 必須 |
 | --- | --- | --- |
 | `GEMINI_API_KEY` | IDEAページのAI企画生成（トレンド→企画） | 生成機能を使う場合は必須 |
-| `YOUTUBE_API_KEY` | `npm run sync-trends` での実トレンド取得 | 同期スクリプトを使う場合は必須 |
+| `YOUTUBE_API_KEY` | `npm run sync-trends` / 定期自動更新での実トレンド取得 | 実データ連携を使う場合は必須 |
+| `TREND_SYNC_INTERVAL_MINUTES` | トレンド定期自動更新の間隔（分） | 任意（既定360分＝6時間） |
+| `SESSION_SECRET` | ログインセッションCookieの署名鍵 | 本番では必須（未設定時は開発用の固定値にフォールバックし、誰でもセッションを偽造できてしまう） |
 
-いずれも未設定でもアプリ自体は起動し、該当機能だけがエラーメッセージ付きで無効になります（DB永続化・保存済み企画の閲覧・POST CHECK/BENCHMARKのログ記録などは鍵なしで動作）。
+`GEMINI_API_KEY` / `YOUTUBE_API_KEY` が未設定でもアプリ自体は起動し、該当機能だけがエラーメッセージ付きで無効になります（DB永続化・保存済み企画の閲覧・POST CHECK/BENCHMARKのログ記録などは鍵なしで動作）。`SESSION_SECRET` は本番運用前に必ず設定してください（`openssl rand -hex 32` などで生成）。
+
+## アカウント・データ分離
+
+タレントごとにメール＋パスワードでアカウントを作成できます（`/register`）。企画（Idea）・アクティビティログ（Activity）はユーザーごとに分離され、他のタレントのデータは一切見えません（API側でも所有者チェックあり）。トレンド（Trend）はユーザーに紐付かない共有データとして全員に同じ内容が表示されます。
+
+未ログイン状態でアクセスすると、`/login` と `/register`、`/api/auth/*`、`/api/health` 以外の全ページ・全APIが自動的に `/login` へリダイレクトされます（`src/proxy.ts`）。セッションは署名付きCookie（`SESSION_SECRET`によるHMAC）で管理しており、DBにセッションテーブルは持ちません。
 
 ## 実データ連携について
 
-- **DB永続化**：企画（Idea）・トレンド（Trend）・アクティビティログ（Activity）はSQLite（Prisma）に永続化されます。MY REPORTの数値・週間アクティビティ・最近のアクティビティはすべて実際の操作履歴から集計しています。
-- **トレンド実データ（YouTube）**：`npm run sync-trends` を実行すると、YouTube Data API から実際に再生数が伸びている動画を取得し、Geminiでカテゴリー分け・注目理由・使い方の解説文を生成してTRENDページに反映します（`src/lib/sources/youtube.ts`, `scripts/sync-trends.ts`）。伸び率(%)は算出できないため、実際の再生回数をそのまま表示しています。
+- **DB永続化**：企画（Idea）・トレンド（Trend）・アクティビティログ（Activity）はSQLite（Prisma）に永続化されます。MY REPORTの数値・週間アクティビティ・最近のアクティビティはすべて実際の操作履歴（ユーザーごと）から集計しています。
+- **トレンド実データ（YouTube）**：YouTube Data API から実際に再生数が伸びている動画を取得し、Geminiでカテゴリー分け・注目理由・使い方の解説文（音源カテゴリーの場合は歌手名・曲名も）を生成してTRENDページに反映します（`src/lib/trend-sync.ts`）。各トレンドカードには元動画への参考リンク（`sourceUrl`・チャンネル名）も表示され、「誰を参考にできるか」がすぐ分かるようになっています。伸び率(%)は算出できないため、実際の再生回数をそのまま表示しています。
+  - **手動実行**：`npm run sync-trends`
+  - **自動定期更新**：`GEMINI_API_KEY` と `YOUTUBE_API_KEY` の両方が設定されていれば、サーバー起動時に自動で有効化されます（`src/instrumentation.ts`）。起動時に1回実行され、以降は `TREND_SYNC_INTERVAL_MINUTES`（既定360分）ごとに自動実行されます。追加のCronサービス設定は不要です。
+  - SEED（初期投入のダミーデータ）には歌手名・曲名・参考リンクを含めていません。これらは実際の根拠がない情報を捏造しないためで、実データ（YouTube）に切り替わって初めて表示されます。
 - **TikTok / Instagram**：両プラットフォームとも、外部開発者が自由に「今のトレンド」を取得できる公開APIを提供していません。取得できるのは審査を通過したアプリでの自社アカウントデータのみです。そのため `src/lib/sources/tiktok.ts` / `src/lib/sources/instagram.ts` はアダプターの型・エラーメッセージのみを用意したスタブになっています。TikTok for Developers / Meta for Developers でアプリ審査が完了し次第、`TIKTOK_API_KEY` / `INSTAGRAM_ACCESS_TOKEN` を設定してこれらのファイルを実装してください。
 
 ## AI生成ロジック（トレンド→企画）
@@ -52,8 +63,9 @@ Railwayのダッシュボードで、このサービスに永続ボリューム�
 | 変数 | 値 | 備考 |
 | --- | --- | --- |
 | `DATABASE_URL` | `file:/data/dev.db` | 手順2のボリュームのマウントパスに合わせる |
-| `GEMINI_API_KEY` | 取得したキー | IDEA生成を使う場合 |
-| `YOUTUBE_API_KEY` | 取得したキー | トレンド同期を使う場合 |
+| `SESSION_SECRET` | `openssl rand -hex 32`等で生成した値 | 必須（ログイン機能のセキュリティ上必須） |
+| `GEMINI_API_KEY` | 取得したキー | IDEA生成・トレンド定期更新を使う場合 |
+| `YOUTUBE_API_KEY` | 取得したキー | トレンド同期・定期更新を使う場合 |
 | `NODE_ENV` | `production` | Dockerfile内で設定済みだが明示しても可 |
 
 ### 4. デプロイ
@@ -73,14 +85,20 @@ Push すると Railway が `Dockerfile` からビルドし、コンテナ起動�
 ## 主なディレクトリ
 
 ```
-prisma/schema.prisma       DBスキーマ（Trend / Idea / Activity）
+prisma/schema.prisma       DBスキーマ（User / Trend / Idea / Activity）
 prisma/seed.ts              初期トレンドのシード
-scripts/sync-trends.ts      YouTube実データ同期スクリプト
-src/lib/ai.ts                Gemini連携（企画生成・トレンド要約）
-src/lib/sources/             外部データソースのアダプター（youtube / tiktok / instagram）
-src/app/api/                 生成・保存トグル・アクティビティ記録のAPI Routes
-src/app/api/health/          ヘルスチェック用エンドポイント
+scripts/sync-trends.ts      YouTube実データ同期スクリプト（手動CLI）
+src/instrumentation.ts       トレンド定期自動更新の起動フック
+src/proxy.ts                 未ログインアクセスを/loginへリダイレクトするガード
+src/lib/ai.ts                 Gemini連携（企画生成・トレンド要約）
+src/lib/trend-sync.ts         トレンド同期の共通ロジック（CLI・定期更新の両方から呼ばれる）
+src/lib/sources/              外部データソースのアダプター（youtube / tiktok / instagram）
+src/lib/auth.ts / session.ts / password.ts   認証基盤（セッションCookie・パスワードハッシュ）
+src/app/login/, src/app/register/   ログイン・新規登録ページ
+src/app/api/auth/             ログイン・登録・ログアウトのAPI Routes
+src/app/api/                  生成・保存トグル・アクティビティ記録のAPI Routes
+src/app/api/health/           ヘルスチェック用エンドポイント
 src/app/{page,trend,idea,analyze,report}/  各ページ
-Dockerfile                   本番デプロイ用（Railway等、永続ディスク対応ホスト向け）
-docker-entrypoint.sh         コンテナ起動時のmigrate/seed/start
+Dockerfile                    本番デプロイ用（Railway等、永続ディスク対応ホスト向け）
+docker-entrypoint.sh          コンテナ起動時のmigrate/seed/start
 ```

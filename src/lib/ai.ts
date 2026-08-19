@@ -142,6 +142,8 @@ export interface TrendSummary {
   description: string;
   whyHot: string;
   howToUse: string;
+  artistName: string | null;
+  songTitle: string | null;
 }
 
 function buildTrendSummarySchema(categories: readonly string[]) {
@@ -152,8 +154,18 @@ function buildTrendSummarySchema(categories: readonly string[]) {
       description: { type: "string", description: "この動画が示すトレンドの説明（1文）" },
       whyHot: { type: "string", description: "なぜ今注目されているか（1〜2文）" },
       howToUse: { type: "string", description: "タレントが投稿に取り入れる際のおすすめの使い方（1〜2文）" },
+      artistName: {
+        type: "string",
+        description:
+          "カテゴリーが「音源」で、動画タイトル・チャンネル名から歌手/アーティスト名が読み取れる場合のみ記入。読み取れない、または音源カテゴリでない場合は空文字。",
+      },
+      songTitle: {
+        type: "string",
+        description:
+          "カテゴリーが「音源」で、動画タイトルから曲名が読み取れる場合のみ記入。読み取れない、または音源カテゴリでない場合は空文字。",
+      },
     },
-    required: ["category", "description", "whyHot", "howToUse"],
+    required: ["category", "description", "whyHot", "howToUse", "artistName", "songTitle"],
   };
 }
 
@@ -173,6 +185,8 @@ export async function summarizeYoutubeTrend(params: {
     "実際にYouTubeで再生数が伸びている動画の情報をもとに、タレントスクール所属者向けに",
     "『なぜ注目されているか』『どう投稿に取り入れるか』を提案口調（断定しない）で短くまとめてください。",
     "動画に書かれていない事実を創作しないでください。情報が不足する場合は一般的な傾向として書いてください。",
+    "カテゴリーが「音源」の場合のみ、動画タイトル・チャンネル名から歌手/アーティスト名と曲名を",
+    "読み取れる範囲で抽出してください（読み取れない場合や音源カテゴリでない場合は空文字にする）。",
   ].join("\n");
 
   const userPrompt = [
@@ -205,5 +219,7 @@ export async function summarizeYoutubeTrend(params: {
     description: String(parsed.description ?? ""),
     whyHot: String(parsed.whyHot ?? ""),
     howToUse: String(parsed.howToUse ?? ""),
+    artistName: parsed.artistName ? String(parsed.artistName) : null,
+    songTitle: parsed.songTitle ? String(parsed.songTitle) : null,
   };
 }
