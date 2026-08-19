@@ -1,0 +1,41 @@
+import type { Metadata } from "next";
+import { Space_Grotesk, Noto_Sans_JP } from "next/font/google";
+import { Suspense } from "react";
+import "./globals.css";
+import Header from "@/components/Header";
+import BottomNav from "@/components/BottomNav";
+
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+});
+
+const notoSansJP = Noto_Sans_JP({
+  variable: "--font-noto-sans-jp",
+  subsets: ["latin"],
+  weight: ["400", "500", "700", "900"],
+});
+
+export const metadata: Metadata = {
+  title: "ASOBI LAB | アソビラボ",
+  description:
+    "SNSを、もっと楽しく。もっと戦略的に。タレントのためのSNS活動支援ラボ、ASOBI LAB。",
+};
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    <html
+      lang="ja"
+      className={`${spaceGrotesk.variable} ${notoSansJP.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col bg-white text-al-black">
+        <Suspense fallback={<div className="hidden h-[73px] border-b border-al-gray-200 md:block" />}>
+          <Header />
+        </Suspense>
+        <main className="flex-1 pb-24 md:pb-0">{children}</main>
+        <BottomNav />
+      </body>
+    </html>
+  );
+}

@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum TrendSource {
+  SEED
+  YOUTUBE
+  TIKTOK
+  INSTAGRAM
+}
+
+enum ActivityType {
+  TREND_CHECK
+  IDEA_SAVED
+  POST_CHECK
+  BENCHMARK
+}
+
+enum Persona {
+  GENKI // 元気印
+  COOL // クール
+  HONWAKA // ほんわか
+  DOKUZETSU // 毒舌気味
+  SEITOHA // 正統派
+}
+
+// トレンド情報。SEED=初期投入データ、YOUTUBE=YouTube Data APIから同期。
+// TikTok/Instagramは公式APIの審査が下り次第、同じテーブルにsource値を追加して連携する想定。
+model Trend {
+  id            String      @id @default(uuid())
+  category      String
+  name          String
+  description   String
+  whyHot        String
+  howToUse      String
+  growth        String
+  thumbnailFrom String
+  thumbnailTo   String
+  source        TrendSource @default(SEED)
+  sourceLabel   String? // 例: チャンネル名、投稿者名
+  sourceUrl     String?
+  fetchedAt     DateTime    @default(now())
+
+  ideas Idea[]
+
+  @@index([category])
+}
+
+// AIが生成した投稿企画。generatedByAIがtrueのものはGemini生成、falseは初期シードデータ。
+model Idea {
+  id            String   @id @default(uuid())
+  trendId       String
+  trend         Trend    @relation(fields: [trendId], references: [id], onDelete: Cascade)
+  persona       Persona?
+  title         String
+  reason        String
+  opening       String
+  location      String
+  expression    String
+  structure     String
+  duration      String
+  punchline     String
+  saved         Boolean  @default(false)
+  generatedByAI Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([saved])
+  @@index([createdAt])
+}
+
+// MY REPORTの活動ログ・カウントの元データ
+model Activity {
+  id        String       @id @default(uuid())
+  type      ActivityType
+  text      String
+  createdAt DateTime     @default(now())
+
+  @@index([type])
+  @@index([createdAt])
+}
