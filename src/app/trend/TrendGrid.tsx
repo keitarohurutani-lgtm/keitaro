@@ -2,14 +2,27 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { Trend } from "@/generated/prisma/client";
+import type { Trend, TrendRanking } from "@/generated/prisma/client";
 import { CATEGORIES } from "@/lib/data";
 import TrendCard from "@/components/TrendCard";
+import { formatWeekLabel } from "@/lib/week";
 
-export default function TrendGrid({ trends }: { trends: Trend[] }) {
+const RANKING_SIZE = 5;
+
+export default function TrendGrid({
+  trends,
+  rankings,
+  weekStart,
+}: {
+  trends: Trend[];
+  rankings: TrendRanking[];
+  weekStart: Date;
+}) {
   const [active, setActive] = useState<"すべて" | (typeof CATEGORIES)[number]>("すべて");
 
   const filtered = active === "すべて" ? trends : trends.filter((t) => t.category === active);
+  const activeRankings =
+    active === "すべて" ? [] : rankings.filter((r) => r.category === active);
 
   return (
     <>
@@ -51,6 +64,61 @@ export default function TrendGrid({ trends }: { trends: Trend[] }) {
           </p>
         )}
       </div>
+
+      {active === "すべて" ? (
+        <p className="mt-10 rounded-2xl border border-dashed border-al-gray-200 p-6 text-center text-sm text-al-gray-400">
+          カテゴリーを選ぶと、そのジャンルの週間ランキングTOP{RANKING_SIZE}が見られます。
+        </p>
+      ) : (
+        <div className="al-flyer-card mt-10 rounded-2xl p-5">
+          <div className="flex items-baseline justify-between">
+            <h2 className="font-display text-lg font-bold">{active}の週間ランキング</h2>
+            <span className="font-display text-xs font-bold text-al-gray-400">
+              {formatWeekLabel(weekStart)}
+            </span>
+          </div>
+          {activeRankings.length === 0 ? (
+            <p className="mt-4 text-sm text-al-gray-400">
+              今週のランキングはまだ準備中です。
+            </p>
+          ) : (
+            <ol className="mt-4 space-y-3">
+              {activeRankings.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex items-center gap-3 rounded-xl border border-al-gray-100 p-3"
+                >
+                  <span className="al-sticker flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-display text-sm font-bold">
+                    {item.rank}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-display text-sm font-bold">{item.title}</p>
+                    {(item.artistName || item.songTitle) && (
+                      <p className="text-xs font-bold text-al-purple">
+                        🎵 {item.artistName ?? "アーティスト不明"}
+                        {item.songTitle ? ` - ${item.songTitle}` : ""}
+                      </p>
+                    )}
+                    <p className="text-xs text-al-gray-500">
+                      {item.channelTitle} ・ {item.growth}
+                    </p>
+                  </div>
+                  {item.sourceUrl && (
+                    <a
+                      href={item.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 text-xs font-bold text-al-blue hover:underline"
+                    >
+                      見る →
+                    </a>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
     </>
   );
 }

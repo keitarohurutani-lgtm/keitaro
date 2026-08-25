@@ -223,3 +223,67 @@ export async function summarizeYoutubeTrend(params: {
     songTitle: parsed.songTitle ? String(parsed.songTitle) : null,
   };
 }
+
+export interface SongInfo {
+  artistName: string | null;
+  songTitle: string | null;
+}
+
+function buildSongInfoSchema() {
+  return {
+    type: "object",
+    properties: {
+      artistName: {
+        type: "string",
+        description: "動画タイトル・チャンネル名から読み取れる歌手/アーティスト名。読み取れない場合は空文字。",
+      },
+      songTitle: {
+        type: "string",
+        description: "動画タイトルから読み取れる曲名。読み取れない場合は空文字。",
+      },
+    },
+    required: ["artistName", "songTitle"],
+  };
+}
+
+// 週間ランキングの音源カテゴリー2〜5位用。summarizeYoutubeTrendより軽量な
+// アーティスト名・曲名の抽出のみを行う（1位はsummarizeYoutubeTrendの結果を流用するため呼ばない）。
+export async function extractSongInfo(params: {
+  videoTitle: string;
+  channelTitle: string;
+}): Promise<SongInfo> {
+  const ai = getAiClient();
+
+  const systemInstruction = [
+    "あなたは音源トレンド分析AIです。動画タイトルとチャンネル名から、歌手/アーティスト名と曲名を",
+    "読み取れる範囲で抽出してください。書かれていない情報を創作しないでください。",
+    "読み取れない場合は空文字にしてください。",
+  ].join("\n");
+
+  const userPrompt = [
+    `【動画タイトル】${params.videoTitle}`,
+    `【チャンネル名】${params.channelTitle}`,
+  ].join("\n");
+
+  await pace();
+  const response = await ai.models.generateContent({
+    model: MODEL,
+    contents: userPrompt,
+    config: {
+      systemInstruction,
+      thinkingConfig: { thinkingBudget: 0 },
+      maxOutputTokens: 128,
+      responseMimeType: "application/json",
+      responseSchema: buildSongInfoSchema(),
+    },
+  });
+
+  const text = response.text;
+  if (!text) return { artistName: null, songTitle: null };
+  const parsed = JSON.parse(text);
+
+  return {
+    artistName: parsed.artistName ? String(parsed.artistName) : null,
+    songTitle: parsed.songTitle ? String(parsed.songTitle) : null,
+  };
+}

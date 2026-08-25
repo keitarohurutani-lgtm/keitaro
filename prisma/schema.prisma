@@ -69,6 +69,30 @@ model Trend {
   @@index([category])
 }
 
+// カテゴリー・週ごとの「今伸びている動画」ランキング（最大5件）。
+// Trend（カテゴリー代表の1件）とは別に、週替わりで上書きせず週ごとの記録として蓄積する。
+// source系（YOUTUBE実データ）はsourceUrlが入り、SEEDのダミーデータはsourceUrlをnullのままにする
+// （実際に存在しないリンクを捏造しないため）。
+model TrendRanking {
+  id           String   @id @default(uuid())
+  category     String
+  weekOf       DateTime // 集計対象週の開始日（月曜0時, UTC基準で丸めた値）
+  rank         Int // 1〜5、カテゴリー・週内の順位（1が最上位）
+  title        String
+  channelTitle String
+  artistName   String? // 音源カテゴリでAIが読み取れた場合のみ設定
+  songTitle    String?
+  viewCount    Int
+  growth       String // 表示用（例: "12.3万回再生"）
+  thumbnailUrl String?
+  sourceUrl    String?
+  publishedAt  DateTime
+  fetchedAt    DateTime @default(now())
+
+  @@unique([category, weekOf, rank])
+  @@index([category, weekOf])
+}
+
 // AIが生成した投稿企画。generatedByAIがtrueのものはGemini生成、falseは初期シードデータ。
 // userIdで所有者を分離し、他のタレントの企画が見えないようにする。
 model Idea {

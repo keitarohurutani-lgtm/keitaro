@@ -8,7 +8,8 @@
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { fetchTrendingVideos, formatViewCount } from "@/lib/sources/youtube";
-import { summarizeYoutubeTrend } from "@/lib/ai";
+import { summarizeYoutubeTrend, extractSongInfo } from "@/lib/ai";
+import { getWeekStart } from "@/lib/week";
 
 export const TREND_CATEGORIES = [
   "SNS",
@@ -47,17 +48,21 @@ export interface SyncTrendsResult {
   log: string[];
 }
 
+// 週間ランキングに残す件数（カテゴリーごとに再生数上位N件）。
+const RANKING_SIZE = 5;
+
 export function trendSyncReady(): boolean {
   return Boolean(process.env.YOUTUBE_API_KEY && process.env.GEMINI_API_KEY);
 }
 
 export async function syncTrends(prisma: PrismaClient): Promise<SyncTrendsResult> {
   const result: SyncTrendsResult = { created: 0, updated: 0, skipped: 0, log: [] };
+  const weekOf = getWeekStart(new Date());
 
   for (const category of TREND_CATEGORIES) {
     const query = CATEGORY_QUERY[category];
     try {
-      const videos = await fetchTrendingVideos(query, 1);
+      const videos = await fetchTrendingVideos(query, RANKING_SIZE);
       const video = videos[0];
       if (!video) {
         result.skipped++;
@@ -100,6 +105,65 @@ export async function syncTrends(prisma: PrismaClient): Promise<SyncTrendsResult
         await prisma.trend.create({ data });
         result.created++;
         result.log.push(`[${category}] 追加: ${data.name}`);
+      }
+
+      try {
+        for (let i = 0; i < videos.length; i++) {
+          const rankVideo = videos[i];
+          const rank = i + 1;
+
+          // 1位はsummarizeYoutubeTrendの結果を流用し、音源の2〜5位のみ軽量抽出を追加で呼ぶ。
+          let artistName: string | null = null;
+          let songTitle: string | null = null;
+          if (category === "音源") {
+            if (i === 0) {
+              artistName = summary.artistName;
+              songTitle = summary.songTitle;
+            } else {
+              const songInfo = await extractSongInfo({
+                videoTitle: rankVideo.title,
+                channelTitle: rankVideo.channelTitle,
+              });
+              artistName = songInfo.artistName;
+              songTitle = songInfo.songTitle;
+            }
+          }
+
+          await prisma.trendRanking.upsert({
+            where: { category_weekOf_rank: { category, weekOf, rank } },
+            update: {
+              title: rankVideo.title.slice(0, 80),
+              channelTitle: rankVideo.channelTitle,
+              artistName,
+              songTitle,
+              viewCount: rankVideo.viewCount,
+              growth: formatViewCount(rankVideo.viewCount),
+              thumbnailUrl: rankVideo.thumbnailUrl,
+              sourceUrl: rankVideo.url,
+              publishedAt: new Date(rankVideo.publishedAt),
+              fetchedAt: new Date(),
+            },
+            create: {
+              category,
+              weekOf,
+              rank,
+              title: rankVideo.title.slice(0, 80),
+              channelTitle: rankVideo.channelTitle,
+              artistName,
+              songTitle,
+              viewCount: rankVideo.viewCount,
+              growth: formatViewCount(rankVideo.viewCount),
+              thumbnailUrl: rankVideo.thumbnailUrl,
+              sourceUrl: rankVideo.url,
+              publishedAt: new Date(rankVideo.publishedAt),
+            },
+          });
+        }
+        result.log.push(`[${category}] 週間ランキング${videos.length}件を更新: ${weekOf.toISOString().slice(0, 10)}週`);
+      } catch (rankErr) {
+        result.log.push(
+          `[${category}] 週間ランキングの更新に失敗しました: ${rankErr instanceof Error ? rankErr.message : String(rankErr)}`
+        );
       }
     } catch (err) {
       result.skipped++;

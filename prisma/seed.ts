@@ -1,5 +1,7 @@
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { getWeekStart } from "../src/lib/week";
+import { formatViewCount } from "../src/lib/sources/youtube";
 
 const adapter = new PrismaBetterSqlite3({
   url: process.env.DATABASE_URL ?? "file:./dev.db",
@@ -89,20 +91,111 @@ const SEED_TRENDS = [
   },
 ];
 
+// 週間ランキングのサンプルデータ。sourceUrl/thumbnailUrlは実在しないリンクを捏造しないため
+// あえて設定しない（UI側はsourceUrlがnullの場合リンクを表示しない）。
+const SEED_RANKINGS: Record<
+  (typeof SEED_TRENDS)[number]["category"],
+  Array<{
+    title: string;
+    channelTitle: string;
+    viewCount: number;
+    artistName?: string;
+    songTitle?: string;
+  }>
+> = {
+  音源: [
+    { title: "新曲サビ縦ダンスチャレンジ", channelTitle: "サンプルアーティストA", viewCount: 452000, artistName: "サンプルアーティストA", songTitle: "夜明けのループ" },
+    { title: "切ないローファイEDMで表情芸", channelTitle: "サンプルアーティストB", viewCount: 318000, artistName: "サンプルアーティストB", songTitle: "サイレントブルー" },
+    { title: "TikTok発バラードが逆輸入ヒット", channelTitle: "サンプルアーティストC", viewCount: 275000, artistName: "サンプルアーティストC", songTitle: "透明な合図" },
+    { title: "8カウントで踊れる新曲サビ", channelTitle: "サンプルアーティストD", viewCount: 198000, artistName: "サンプルアーティストD", songTitle: "リフレイン" },
+    { title: "低音強めのダンスサウンド", channelTitle: "サンプルアーティストE", viewCount: 142000, artistName: "サンプルアーティストE", songTitle: "オーバードライブ" },
+  ],
+  TikTok: [
+    { title: "リアクション二重投稿フォーマット", channelTitle: "サンプルクリエイターA", viewCount: 389000 },
+    { title: "3秒だけ見せる予告カット", channelTitle: "サンプルクリエイターB", viewCount: 301000 },
+    { title: "コメント返信をそのまま動画化", channelTitle: "サンプルクリエイターC", viewCount: 256000 },
+    { title: "縦画面2分割の対比構成", channelTitle: "サンプルクリエイターD", viewCount: 190000 },
+    { title: "音ハメ加工トランジション", channelTitle: "サンプルクリエイターE", viewCount: 133000 },
+  ],
+  SNS: [
+    { title: "縦型ドキュメント投稿フォーマット", channelTitle: "サンプルアカウントA", viewCount: 276000 },
+    { title: "保存されやすい1枚完結ポスト", channelTitle: "サンプルアカウントB", viewCount: 224000 },
+    { title: "プロフィール流入狙いの結論ファースト構成", channelTitle: "サンプルアカウントC", viewCount: 187000 },
+    { title: "コメント欄を煽らない共感型キャプション", channelTitle: "サンプルアカウントD", viewCount: 151000 },
+    { title: "文字を詰め込む『読ませる』投稿", channelTitle: "サンプルアカウントE", viewCount: 109000 },
+  ],
+  ファッション: [
+    { title: "指定カラー3色配色チャレンジ", channelTitle: "サンプルスタイリストA", viewCount: 244000 },
+    { title: "手持ち服だけの即興コーデ", channelTitle: "サンプルスタイリストB", viewCount: 198000 },
+    { title: "1コーデ3パターン変換", channelTitle: "サンプルスタイリストC", viewCount: 165000 },
+    { title: "季節先取りレイヤードコーデ", channelTitle: "サンプルスタイリストD", viewCount: 132000 },
+    { title: "小物だけで印象チェンジ", channelTitle: "サンプルスタイリストE", viewCount: 98000 },
+  ],
+  メイク: [
+    { title: "1点直しメイクで時短", channelTitle: "サンプルメイクアップA", viewCount: 231000 },
+    { title: "涙袋だけ10秒メイク", channelTitle: "サンプルメイクアップB", viewCount: 187000 },
+    { title: "ビフォーアフター2秒切り替え", channelTitle: "サンプルメイクアップC", viewCount: 156000 },
+    { title: "崩れ直しルーティン", channelTitle: "サンプルメイクアップD", viewCount: 121000 },
+    { title: "眉だけチェンジで印象アップ", channelTitle: "サンプルメイクアップE", viewCount: 94000 },
+  ],
+  企画: [
+    { title: "現場密着ビハインド企画", channelTitle: "サンプル企画チームA", viewCount: 213000 },
+    { title: "移動中1分だけの素の表情", channelTitle: "サンプル企画チームB", viewCount: 176000 },
+    { title: "本番前カウントダウン密着", channelTitle: "サンプル企画チームC", viewCount: 143000 },
+    { title: "スタッフ目線の裏側公開", channelTitle: "サンプル企画チームD", viewCount: 112000 },
+    { title: "台本なし雑談ビハインド", channelTitle: "サンプル企画チームE", viewCount: 87000 },
+  ],
+  Instagram: [
+    { title: "質問箱の即答ストーリー", channelTitle: "サンプルアカウントF", viewCount: 198000 },
+    { title: "15秒質問→即答→オチ形式", channelTitle: "サンプルアカウントG", viewCount: 164000 },
+    { title: "台本なしリール即興トーク", channelTitle: "サンプルアカウントH", viewCount: 137000 },
+    { title: "ストーリーズ投票企画", channelTitle: "サンプルアカウントI", viewCount: 108000 },
+    { title: "コメント欄そのまま朗読", channelTitle: "サンプルアカウントJ", viewCount: 82000 },
+  ],
+};
+
 async function main() {
   const existing = await prisma.trend.count({ where: { source: "SEED" } });
   if (existing > 0) {
     console.log(`SEEDトレンドは既に${existing}件あるためスキップします。`);
+  } else {
+    for (const trend of SEED_TRENDS) {
+      await prisma.trend.create({
+        data: { ...trend, source: "SEED" },
+      });
+    }
+    console.log(`${SEED_TRENDS.length}件のトレンドをシードしました。`);
+  }
+
+  const existingRankings = await prisma.trendRanking.count();
+  if (existingRankings > 0) {
+    console.log(`週間ランキングは既に${existingRankings}件あるためスキップします。`);
     return;
   }
 
-  for (const trend of SEED_TRENDS) {
-    await prisma.trend.create({
-      data: { ...trend, source: "SEED" },
-    });
+  const weekOf = getWeekStart(new Date());
+  let rankingCount = 0;
+  for (const [category, items] of Object.entries(SEED_RANKINGS)) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      await prisma.trendRanking.create({
+        data: {
+          category,
+          weekOf,
+          rank: i + 1,
+          title: item.title,
+          channelTitle: item.channelTitle,
+          artistName: item.artistName ?? null,
+          songTitle: item.songTitle ?? null,
+          viewCount: item.viewCount,
+          growth: formatViewCount(item.viewCount),
+          publishedAt: new Date(),
+        },
+      });
+      rankingCount++;
+    }
   }
-
-  console.log(`${SEED_TRENDS.length}件のトレンドをシードしました。`);
+  console.log(`${rankingCount}件の週間ランキング（サンプル）をシードしました。`);
 }
 
 main()
