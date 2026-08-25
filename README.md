@@ -71,7 +71,9 @@ VercelのダッシュボードでGitHubリポジトリをインポートする�
 
 ### 4. デプロイ
 
-Push するとVercelがビルド（`prisma migrate deploy && next build`、`package.json`の`build`スクリプト）し、自動でデプロイされます。マイグレーションはビルド時に毎回適用されるため、追加の手動操作は不要です。初回のトレンドデータ投入だけは手動で1回、ローカルから本番のNeon DBに向けて `DATABASE_URL` を本番用に設定した状態で `npm run seed` を実行してください。
+Push するとVercelがビルド（`next build`）し、自動でデプロイされます。
+
+**マイグレーションは自動実行しません**（ビルドに組み込むと、Neonの無料枠がアイドルでスリープしている瞬間にビルドが走った場合、DBが起きるまでの数秒間で接続タイムアウトし、ビルド自体が失敗する`P1002`エラーに遭遇したため）。スキーマを変更した場合は、ローカルから本番のNeon DBに向けて手動で1回 `npm run migrate:deploy` を実行してください。初回のトレンドデータ投入も同様に、本番の`DATABASE_URL`を設定した状態で `npm run seed` を手動実行します。
 
 トレンドの自動更新は `vercel.json` で定義したVercel Cron（1日1回）が `/api/cron/sync-trends` を叩く形で行われます。Vercel Hobbyプランのcronは1日1回までという制限があるため、この頻度になっています。ヘルスチェックには `GET /api/health`（DBに疎通できれば `{"status":"ok"}`）を使えます。
 
