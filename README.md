@@ -16,9 +16,10 @@ npm run dev    # http://localhost:3000
 
 | 変数 | 用途 | 必須 |
 | --- | --- | --- |
+| `DATABASE_URL` | Neon（サーバーレスPostgres）の接続文字列 | 必須。`sslmode=require`は必要だが`channel_binding=require`はPrisma CLIの`migrate`系コマンドが対応していないため付けない |
 | `GEMINI_API_KEY` | IDEAページのAI企画生成（トレンド→企画） | 生成機能を使う場合は必須 |
-| `YOUTUBE_API_KEY` | `npm run sync-trends` / 定期自動更新での実トレンド取得 | 実データ連携を使う場合は必須 |
-| `TREND_SYNC_INTERVAL_MINUTES` | トレンド定期自動更新の間隔（分） | 任意（既定360分＝6時間） |
+| `YOUTUBE_API_KEY` | `npm run sync-trends` / Vercel Cronでの実トレンド取得 | 実データ連携を使う場合は必須 |
+| `CRON_SECRET` | `/api/cron/sync-trends` をVercel Cron以外から叩けないようにする鍵 | 本番では推奨（Vercelが自動でAuthorizationヘッダーに付与） |
 | `SESSION_SECRET` | ログインセッションCookieの署名鍵 | 本番では必須（未設定時は開発用の固定値にフォールバックし、誰でもセッションを偽造できてしまう） |
 
 `GEMINI_API_KEY` / `YOUTUBE_API_KEY` が未設定でもアプリ自体は起動し、該当機能だけがエラーメッセージ付きで無効になります（DB永続化・保存済み企画の閲覧・POST CHECK/BENCHMARKのログ記録などは鍵なしで動作）。`SESSION_SECRET` は本番運用前に必ず設定してください（`openssl rand -hex 32` などで生成）。
@@ -31,10 +32,10 @@ npm run dev    # http://localhost:3000
 
 ## 実データ連携について
 
-- **DB永続化**：企画（Idea）・トレンド（Trend）・アクティビティログ（Activity）はSQLite（Prisma）に永続化されます。MY REPORTの数値・週間アクティビティ・最近のアクティビティはすべて実際の操作履歴（ユーザーごと）から集計しています。
-- **トレンド実データ（YouTube）**：YouTube Data API から実際に再生数が伸びている動画を取得し、Geminiでカテゴリー分け・注目理由・使い方の解説文（音源カテゴリーの場合は歌手名・曲名も）を生成してTRENDページに反映します（`src/lib/trend-sync.ts`）。各トレンドカードには元動画への参考リンク（`sourceUrl`・チャンネル名）も表示され、「誰を参考にできるか」がすぐ分かるようになっています。伸び率(%)は算出できないため、実際の再生回数をそのまま表示しています。
+- **DB永続化**：企画（Idea）・トレンド（Trend）・週間ランキング（TrendRanking）・アクティビティログ（Activity）はNeon（サーバーレスPostgres）に永続化されます。MY REPORTの数値・週間アクティビティ・最近のアクティビティはすべて実際の操作履歴（ユーザーごと）から集計しています。
+- **トレンド実データ（YouTube）**：YouTube Data API から実際に再生数が伸びている動画を取得し、Geminiでカテゴリー分け・注目理由・使い方の解説文（音源カテゴリーの場合は歌手名・曲名も）を生成してTRENDページに反映します（`src/lib/trend-sync.ts`）。各トレンドカードには元動画への参考リンク（`sourceUrl`・チャンネル名）も表示され、「誰を参考にできるか」がすぐ分かるようになっています。伸び率(%)は算出できないため、実際の再生回数をそのまま表示しています。カテゴリーごとに再生数上位5件を週間ランキングとして保存し、TRENDページでカテゴリーを選ぶと閲覧できます。
   - **手動実行**：`npm run sync-trends`
-  - **自動定期更新**：`GEMINI_API_KEY` と `YOUTUBE_API_KEY` の両方が設定されていれば、サーバー起動時に自動で有効化されます（`src/instrumentation.ts`）。起動時に1回実行され、以降は `TREND_SYNC_INTERVAL_MINUTES`（既定360分）ごとに自動実行されます。追加のCronサービス設定は不要です。
+  - **自動定期更新**：`GEMINI_API_KEY` と `YOUTUBE_API_KEY` の両方が設定されていれば、Vercel Cron（`vercel.json`、`/api/cron/sync-trends`）が1日1回自動実行します。Vercel Hobbyプランのcronは1日1回までという制限のため、この頻度になっています。
   - SEED（初期投入のダミーデータ）には歌手名・曲名・参考リンクを含めていません。これらは実際の根拠がない情報を捏造しないためで、実データ（YouTube）に切り替わって初めて表示されます。
 - **TikTok / Instagram**：両プラットフォームとも、外部開発者が自由に「今のトレンド」を取得できる公開APIを提供していません。取得できるのは審査を通過したアプリでの自社アカウントデータのみです。そのため `src/lib/sources/tiktok.ts` / `src/lib/sources/instagram.ts` はアダプターの型・エラーメッセージのみを用意したスタブになっています。TikTok for Developers / Meta for Developers でアプリ審査が完了し次第、`TIKTOK_API_KEY` / `INSTAGRAM_ACCESS_TOKEN` を設定してこれらのファイルを実装してください。
 
@@ -46,52 +47,47 @@ IDEAページの「AIに企画を提案してもらう」は `src/lib/ai.ts` の
 
 実際の映像フレームAI解析は行っていません（動画アップロード基盤・マルチモーダル解析が別途必要なため）。分析結果は一貫したサンプル内容を返しますが、実行したこと自体はActivityとしてDBに記録され、MY REPORTの実数値に反映されます。画面には常に「AIによる参考分析です」という注意書きを表示しています。
 
-## デプロイ（Railway / 永続ディスク対応ホスト向け）
+## デプロイ（Vercel + Neon、完全無料・永続）
 
-DBが `better-sqlite3` によるローカルファイル永続化のため、**Vercelなどのサーバーレス環境には非対応**です（リクエストごとにファイルシステムがリセットされ、保存した企画やアクティビティ履歴が消えます）。Railway・Fly.io・Renderなど、永続ボリュームをアタッチできるホストを使ってください。以下はRailwayを例にした手順です。
+DBはNeon（サーバーレスPostgres、無料枠が永続的でカード登録不要）、ホスティングはVercel Hobbyプラン（無料・カード登録不要）を使います。どちらもトライアルではなく恒久的な無料枠です。
 
-### 1. リポジトリをRailwayに接続
+### 1. Neonプロジェクトを作成
 
-Railwayが `Dockerfile` を自動検出してビルドします（Nixpacksは使いません）。
+[neon.tech](https://neon.tech) でプロジェクトを作成し、Connection stringを控える。**Prisma CLIの`migrate`系コマンドは`channel_binding=require`パラメータに対応していない**ため、接続文字列からこのパラメータは外し、`sslmode=require`のみを残すこと（例: `postgresql://user:pass@host/db?sslmode=require`）。
 
-### 2. ボリュームを作成してマウント
+### 2. Vercelにリポジトリをインポート
 
-Railwayのダッシュボードで、このサービスに永続ボリュームを作成し、マウントパスを `/data` に設定してください。
+VercelのダッシュボードでGitHubリポジトリをインポートするだけで、Next.jsプロジェクトとして自動検出されます。特別な設定は不要です。
 
-### 3. 環境変数を設定
+### 3. 環境変数を設定（Vercelのプロジェクト設定）
 
 | 変数 | 値 | 備考 |
 | --- | --- | --- |
-| `DATABASE_URL` | `file:/data/dev.db` | 手順2のボリュームのマウントパスに合わせる |
+| `DATABASE_URL` | 手順1のConnection string | 必須 |
 | `SESSION_SECRET` | `openssl rand -hex 32`等で生成した値 | 必須（ログイン機能のセキュリティ上必須） |
+| `CRON_SECRET` | `openssl rand -hex 32`等で生成した値 | `/api/cron/sync-trends` を保護する鍵。Vercelが自動でリクエストに付与する |
 | `GEMINI_API_KEY` | 取得したキー | IDEA生成・トレンド定期更新を使う場合 |
 | `YOUTUBE_API_KEY` | 取得したキー | トレンド同期・定期更新を使う場合 |
-| `NODE_ENV` | `production` | Dockerfile内で設定済みだが明示しても可 |
 
 ### 4. デプロイ
 
-Push すると Railway が `Dockerfile` からビルドし、コンテナ起動時に `docker-entrypoint.sh` が
+Push するとVercelがビルド（`prisma migrate deploy && next build`、`package.json`の`build`スクリプト）し、自動でデプロイされます。マイグレーションはビルド時に毎回適用されるため、追加の手動操作は不要です。初回のトレンドデータ投入だけは手動で1回、ローカルから本番のNeon DBに向けて `DATABASE_URL` を本番用に設定した状態で `npm run seed` を実行してください。
 
-1. `prisma migrate deploy`（マイグレーション適用）
-2. `npm run seed`（初回のみトレンドを投入、2回目以降は自動スキップ）
-3. `npm start`（`next start` でサーバー起動）
-
-を順に実行します。ヘルスチェックには `GET /api/health`（DBに疎通できれば `{"status":"ok"}`）を使えます。
-
-### ローカルでのDocker動作確認について
-
-この環境にはDockerが入っておらず、Dockerfileのビルド自体はローカルで検証できていません。デプロイ前に、Dockerが使える環境で一度 `docker build -t asobi-lab .` を実行して確認することをおすすめします。
+トレンドの自動更新は `vercel.json` で定義したVercel Cron（1日1回）が `/api/cron/sync-trends` を叩く形で行われます。Vercel Hobbyプランのcronは1日1回までという制限があるため、この頻度になっています。ヘルスチェックには `GET /api/health`（DBに疎通できれば `{"status":"ok"}`）を使えます。
 
 ## 主なディレクトリ
 
 ```
-prisma/schema.prisma       DBスキーマ（User / Trend / Idea / Activity）
-prisma/seed.ts              初期トレンドのシード
+prisma/schema.prisma       DBスキーマ（User / Trend / TrendRanking / Idea / Activity）
+prisma/seed.ts              初期トレンド・週間ランキングのシード
 scripts/sync-trends.ts      YouTube実データ同期スクリプト（手動CLI）
-src/instrumentation.ts       トレンド定期自動更新の起動フック
+vercel.json                  Vercel Cronの設定（トレンド定期同期を1日1回実行）
+src/app/api/cron/sync-trends/  Vercel Cronから呼ばれるトレンド定期同期エンドポイント
 src/proxy.ts                 未ログインアクセスを/loginへリダイレクトするガード
-src/lib/ai.ts                 Gemini連携（企画生成・トレンド要約）
-src/lib/trend-sync.ts         トレンド同期の共通ロジック（CLI・定期更新の両方から呼ばれる）
+src/lib/prisma.ts             Neon（サーバーレスPostgres）へのPrisma接続
+src/lib/week.ts                週間ランキングの週区切り計算
+src/lib/ai.ts                 Gemini連携（企画生成・トレンド要約・音源情報抽出）
+src/lib/trend-sync.ts         トレンド同期の共通ロジック（CLI・Cronの両方から呼ばれる）
 src/lib/sources/              外部データソースのアダプター（youtube / tiktok / instagram）
 src/lib/auth.ts / session.ts / password.ts   認証基盤（セッションCookie・パスワードハッシュ）
 src/app/login/, src/app/register/   ログイン・新規登録ページ
@@ -99,6 +95,4 @@ src/app/api/auth/             ログイン・登録・ログアウトのAPI Rout
 src/app/api/                  生成・保存トグル・アクティビティ記録のAPI Routes
 src/app/api/health/           ヘルスチェック用エンドポイント
 src/app/{page,trend,idea,analyze,report}/  各ページ
-Dockerfile                    本番デプロイ用（Railway等、永続ディスク対応ホスト向け）
-docker-entrypoint.sh          コンテナ起動時のmigrate/seed/start
 ```

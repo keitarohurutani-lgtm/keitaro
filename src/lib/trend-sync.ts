@@ -1,5 +1,5 @@
 // TRENDページを実データで更新する共通ロジック。
-// npm run sync-trends（手動CLI）と instrumentation.ts（定期自動実行）の両方から呼ばれる。
+// npm run sync-trends（手動CLI）と /api/cron/sync-trends（Vercel Cron）の両方から呼ばれる。
 //
 // YouTube Data API から実際に再生数が伸びている動画を取得し、Geminiでカテゴリー分け・
 // 注目理由・使い方の解説文（音源の場合は歌手名・曲名も）を生成してTrendテーブルに反映する

@@ -10,7 +10,8 @@ export async function proxy(request: NextRequest) {
   if (
     PUBLIC_PATHS.has(pathname) ||
     pathname.startsWith("/api/auth/") ||
-    pathname === "/api/health"
+    pathname === "/api/health" ||
+    pathname.startsWith("/api/cron/")
   ) {
     return NextResponse.next();
   }
