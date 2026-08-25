@@ -37,11 +37,13 @@ export default function AuthForm({ mode, next }: { mode: Mode; next?: string }) 
           ? `おかえりなさい、${json.user.displayName}さん`
           : `ようこそ、${json.user.displayName}さん！`
       );
+      // 成功時はこの画面自体が遷移で置き換わるため、ここでloadingをfalseに戻さない
+      // （戻すと遷移中に「ログイン」ボタンが押せる状態に見えてしまい、
+      // 何も起きていないように見える）。
       router.push(next && next.startsWith("/") ? next : "/");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "処理に失敗しました。");
-    } finally {
       setLoading(false);
     }
   };
