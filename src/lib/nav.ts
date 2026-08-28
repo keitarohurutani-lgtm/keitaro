@@ -14,6 +14,7 @@ export const desktopNav: NavItem[] = [
   { href: "/analyze?tab=benchmark", label: "BENCHMARK", sub: "比較する" },
   { href: "/analyze?tab=check", label: "ANALYZE", sub: "動画をチェック" },
   { href: "/report", label: "MY REPORT", sub: "活動を振り返る" },
+  { href: "/faq", label: "FAQ", sub: "よくある質問" },
 ];
 
 export const mobileNav: NavItem[] = [
@@ -22,4 +23,5 @@ export const mobileNav: NavItem[] = [
   { href: "/idea", label: "IDEA", sub: "企画" },
   { href: "/analyze", label: "ANALYZE", sub: "分析" },
   { href: "/report", label: "MY", sub: "マイ" },
+  { href: "/faq", label: "FAQ", sub: "質問" },
 ];
