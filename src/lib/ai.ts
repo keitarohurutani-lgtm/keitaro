@@ -144,6 +144,7 @@ export interface TrendSummary {
   howToUse: string;
   artistName: string | null;
   songTitle: string | null;
+  searchKeywords: string[];
 }
 
 function buildTrendSummarySchema(categories: readonly string[]) {
@@ -164,8 +165,25 @@ function buildTrendSummarySchema(categories: readonly string[]) {
         description:
           "カテゴリーが「音源」で、動画タイトルから曲名が読み取れる場合のみ記入。読み取れない、または音源カテゴリでない場合は空文字。",
       },
+      searchKeywords: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "このトレンドに関連する参考投稿をTikTok/Instagram/YouTubeで探すのに使える検索キーワード・ハッシュタグ案を3〜5個。" +
+          "動画タイトル・チャンネル名から実際に読み取れる語（曲名・振り付け名・チャレンジ名など）を優先し、" +
+          "読み取れない場合のみ、カテゴリーやジャンルから一般的に使われそうな検索語を補う。日本語中心、" +
+          "ハッシュタグは#を付けて表記。",
+      },
     },
-    required: ["category", "description", "whyHot", "howToUse", "artistName", "songTitle"],
+    required: [
+      "category",
+      "description",
+      "whyHot",
+      "howToUse",
+      "artistName",
+      "songTitle",
+      "searchKeywords",
+    ],
   };
 }
 
@@ -187,6 +205,8 @@ export async function summarizeYoutubeTrend(params: {
     "動画に書かれていない事実を創作しないでください。情報が不足する場合は一般的な傾向として書いてください。",
     "カテゴリーが「音源」の場合のみ、動画タイトル・チャンネル名から歌手/アーティスト名と曲名を",
     "読み取れる範囲で抽出してください（読み取れない場合や音源カテゴリでない場合は空文字にする）。",
+    "また、タレントがこのトレンドの参考投稿をTikTok/Instagram/YouTubeで自分でも探せるよう、",
+    "検索キーワード・ハッシュタグ案も3〜5個添えてください。",
   ].join("\n");
 
   const userPrompt = [
@@ -221,6 +241,9 @@ export async function summarizeYoutubeTrend(params: {
     howToUse: String(parsed.howToUse ?? ""),
     artistName: parsed.artistName ? String(parsed.artistName) : null,
     songTitle: parsed.songTitle ? String(parsed.songTitle) : null,
+    searchKeywords: Array.isArray(parsed.searchKeywords)
+      ? parsed.searchKeywords.map((k: unknown) => String(k)).filter(Boolean)
+      : [],
   };
 }
 

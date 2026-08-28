@@ -43,10 +43,13 @@ function getApiKey(): string {
 
 export async function fetchTrendingVideos(
   query: string,
-  maxResults = 3
+  maxResults = 3,
+  publishedAfterDays = 30
 ): Promise<YoutubeTrendVideo[]> {
   const apiKey = getApiKey();
-  const publishedAfter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const publishedAfter = new Date(
+    Date.now() - publishedAfterDays * 24 * 60 * 60 * 1000
+  ).toISOString();
 
   const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
   searchUrl.searchParams.set("part", "snippet");

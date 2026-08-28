@@ -62,6 +62,7 @@ model Trend {
   sourceUrl     String? // 参考リンク（実データ取得時のみ。ダミーデータでは捏造しない）
   artistName    String? // 音源カテゴリの場合の歌手・アーティスト名
   songTitle     String? // 音源カテゴリの場合の曲名
+  searchKeywords String[] @default([]) // このトレンドの参考動画を探すための検索キーワード・ハッシュタグ案
   fetchedAt     DateTime    @default(now())
 
   ideas Idea[]

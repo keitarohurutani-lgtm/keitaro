@@ -62,6 +62,23 @@ export default function TrendCard({
             参考：{trend.sourceLabel ?? "元動画"}を見る →
           </a>
         )}
+        {trend.searchKeywords.length > 0 && (
+          <div className="mt-1 border-t border-al-gray-100 pt-2">
+            <p className="text-[11px] font-bold text-al-gray-400">
+              この検索キーワードで参考投稿を探せます
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {trend.searchKeywords.map((keyword) => (
+                <span
+                  key={keyword}
+                  className="rounded-full bg-al-gray-50 px-2 py-0.5 text-[11px] font-bold text-al-gray-600"
+                >
+                  {keyword}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
         {footer && <div className="mt-2">{footer}</div>}
       </div>
     </article>

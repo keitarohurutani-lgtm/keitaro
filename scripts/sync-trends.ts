@@ -4,7 +4,12 @@
 // 使い方: npm run sync-trends
 // 必要な環境変数: YOUTUBE_API_KEY, GEMINI_API_KEY（.env.local に設定）
 
-import "dotenv/config";
+// dotenv/config はデフォルトで .env しか読まないため、.env.local（APIキー等）を明示的に読み込む。
+// Next.js本体は両方を自動で読むが、このCLIスクリプトはNext.jsの外で動くため自前で読む必要がある。
+import { config as loadEnv } from "dotenv";
+loadEnv({ path: ".env" });
+loadEnv({ path: ".env.local" });
+
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { neonConfig } from "@neondatabase/serverless";
 import ws from "ws";

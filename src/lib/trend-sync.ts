@@ -5,6 +5,11 @@
 // 注目理由・使い方の解説文（音源の場合は歌手名・曲名も）を生成してTrendテーブルに反映する
 // （source=YOUTUBE）。TikTok/Instagramは公式のトレンド発見APIが一般開発者に提供されていない
 // ため対象外。詳細は src/lib/sources/tiktok.ts, src/lib/sources/instagram.ts のコメントを参照。
+//
+// TikTokカテゴリーのみ、「1週間以内投稿・10万回再生以上」というトレンド判定の定量条件を
+// 満たした動画だけをトレンド扱いにする（下記TIKTOK_TREND_*参照）。ただし再生数自体は
+// TikTok本体の数値ではなく、YouTube上でTikTok関連コンテンツを検索した際の実再生数を
+// 代用している点に注意（TrendCard上は引き続きsource=YOUTUBEとして正直に表示される）。
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { fetchTrendingVideos, formatViewCount } from "@/lib/sources/youtube";
@@ -51,6 +56,14 @@ export interface SyncTrendsResult {
 // 週間ランキングに残す件数（カテゴリーごとに再生数上位N件）。
 const RANKING_SIZE = 5;
 
+// TikTokカテゴリーの「トレンド扱い」の定義：1週間以内に投稿され、10万回再生以上。
+// TikTok自体の実再生数ではなく、YouTube上でTikTok関連コンテンツを検索した際の実再生数を
+// 代用値として使う（TikTok公式の再生数取得手段が一般開発者に提供されていないため）。
+const TIKTOK_TREND_WINDOW_DAYS = 7;
+const TIKTOK_TREND_MIN_VIEWS = 100_000;
+// 7日以内・10万再生以上の候補を十分な数から選べるよう、検索件数を広めに取る。
+const TIKTOK_CANDIDATE_SIZE = 20;
+
 export function trendSyncReady(): boolean {
   return Boolean(process.env.YOUTUBE_API_KEY && process.env.GEMINI_API_KEY);
 }
@@ -62,7 +75,24 @@ export async function syncTrends(prisma: PrismaClient): Promise<SyncTrendsResult
   for (const category of TREND_CATEGORIES) {
     const query = CATEGORY_QUERY[category];
     try {
-      const videos = await fetchTrendingVideos(query, RANKING_SIZE);
+      let videos =
+        category === "TikTok"
+          ? await fetchTrendingVideos(query, TIKTOK_CANDIDATE_SIZE, TIKTOK_TREND_WINDOW_DAYS)
+          : await fetchTrendingVideos(query, RANKING_SIZE);
+
+      if (category === "TikTok") {
+        videos = videos
+          .filter((v) => v.viewCount >= TIKTOK_TREND_MIN_VIEWS)
+          .slice(0, RANKING_SIZE);
+        if (videos.length === 0) {
+          result.skipped++;
+          result.log.push(
+            `[${category}] トレンド条件（${TIKTOK_TREND_WINDOW_DAYS}日以内・${TIKTOK_TREND_MIN_VIEWS.toLocaleString()}回再生以上）を満たす動画なし`
+          );
+          continue;
+        }
+      }
+
       const video = videos[0];
       if (!video) {
         result.skipped++;
@@ -94,6 +124,7 @@ export async function syncTrends(prisma: PrismaClient): Promise<SyncTrendsResult
         sourceUrl: video.url,
         artistName: summary.artistName,
         songTitle: summary.songTitle,
+        searchKeywords: summary.searchKeywords,
         fetchedAt: new Date(),
       };
 
