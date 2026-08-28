@@ -41,6 +41,33 @@ export function describeAiError(err: unknown): string {
   return "AI企画生成の呼び出しに失敗しました。もう一度お試しください。";
 }
 
+export function describeVideoAnalysisError(err: unknown): string {
+  if (err instanceof Error && err.message.includes("GEMINI_API_KEY")) {
+    return err.message;
+  }
+  const raw = err instanceof Error ? err.message : String(err);
+  if (raw.includes("RESOURCE_EXHAUSTED") || raw.includes('"code":429')) {
+    const retryMatch = raw.match(/retryDelay":"(\d+)s"/);
+    const wait = retryMatch ? `${retryMatch[1]}秒ほど` : "少し";
+    return `AIへのアクセスが集中しています（無料枠のリクエスト数上限）。${wait}待ってからもう一度お試しください。`;
+  }
+  if (raw.includes("INVALID_ARGUMENT") || raw.includes('"code":400')) {
+    return "この動画を読み込めませんでした。今のところYouTubeのリンクのみ対応しています（TikTok/Instagramは非対応）。URLが正しいか、動画が公開設定になっているかもご確認ください。";
+  }
+  return "動画の分析に失敗しました。もう一度お試しください。";
+}
+
+// GeminiのfileData.fileUriはYouTubeのURLのみ動画として直接読み込める
+// （TikTok/Instagramの動画URLは400 INVALID_ARGUMENTになることを確認済み）。
+export function isSupportedVideoUrl(url: string): boolean {
+  try {
+    const { hostname } = new URL(url);
+    return /(^|\.)(youtube\.com|youtu\.be)$/.test(hostname);
+  } catch {
+    return false;
+  }
+}
+
 export interface GeneratedIdea {
   title: string;
   reason: string;
@@ -308,5 +335,253 @@ export async function extractSongInfo(params: {
   return {
     artistName: parsed.artistName ? String(parsed.artistName) : null,
     songTitle: parsed.songTitle ? String(parsed.songTitle) : null,
+  };
+}
+
+// YouTubeの動画IDを取り出す（サムネイル表示用）。取り出せない場合はnull。
+export function extractYoutubeVideoId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (u.hostname === "youtu.be") return u.pathname.slice(1) || null;
+    if (u.hostname.endsWith("youtube.com")) {
+      if (u.pathname === "/watch") return u.searchParams.get("v");
+      if (u.pathname.startsWith("/shorts/")) return u.pathname.split("/")[2] ?? null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export interface VideoAnalysisCut {
+  label: string;
+  timestamp: string;
+  score: "◎" | "○" | "△";
+  comment: string;
+}
+
+export interface VideoAnalysisResult {
+  videoTitle: string;
+  overallComment: string;
+  cuts: VideoAnalysisCut[];
+}
+
+function buildVideoAnalysisSchema() {
+  return {
+    type: "object",
+    properties: {
+      videoTitle: { type: "string", description: "動画の内容が伝わる短いタイトル（10〜20文字程度）" },
+      overallComment: {
+        type: "string",
+        description: "動画全体の印象・良い点・改善できそうな点を2〜3文で（提案口調、断定しない）",
+      },
+      cuts: {
+        type: "array",
+        minItems: 3,
+        maxItems: 6,
+        items: {
+          type: "object",
+          properties: {
+            label: { type: "string", description: "そのカットの内容を表す短い見出し（例: 冒頭の掴み）" },
+            timestamp: { type: "string", description: "実際の時間帯（例: 0:00-0:03）" },
+            score: { type: "string", enum: ["◎", "○", "△"], description: "◎=良い, ○=普通, △=改善余地あり" },
+            comment: {
+              type: "string",
+              description: "そのカットで実際に見える画角・カメラワーク・カット割り・編集（テロップ、BGM、トランジション等）を具体的に説明",
+            },
+          },
+          required: ["label", "timestamp", "score", "comment"],
+        },
+        description: "動画を実際の時間経過に沿って3〜6個のカット・場面に分け、それぞれを画角・編集の観点で評価",
+      },
+    },
+    required: ["videoTitle", "overallComment", "cuts"],
+  };
+}
+
+// 実際にYouTube動画をGeminiに読み込ませ、画角・カット割り・編集スタイルを分析する。
+// 動画に映っていない内容を創作しないよう、実際に観測できることのみ書くよう指示する。
+export async function analyzeVideoFromUrl(videoUrl: string): Promise<VideoAnalysisResult> {
+  const ai = getAiClient();
+
+  const systemInstruction = [
+    "あなたはタレント向けSNS支援サービス「ASOBI LAB」の動画分析AIです。",
+    "実際に渡された動画を最初から最後まで見て、時間経過に沿ってカット・場面に分け、",
+    "それぞれの画角（カメラの距離・角度）、カット割り、編集（テロップ・BGM・トランジション等）を",
+    "具体的に説明してください。",
+    "動画に実際に映っていないことは書かないでください。断定的な『こうすべき』ではなく、",
+    "『こういう工夫もあります』という提案口調で、小学生でも分かる易しい言葉で書いてください。",
+  ].join("\n");
+
+  await pace();
+  const response = await ai.models.generateContent({
+    model: MODEL,
+    contents: [
+      {
+        role: "user",
+        parts: [
+          { fileData: { fileUri: videoUrl } },
+          { text: "この動画を分析してください。" },
+        ],
+      },
+    ],
+    config: {
+      systemInstruction,
+      thinkingConfig: { thinkingBudget: 0 },
+      maxOutputTokens: 1536,
+      responseMimeType: "application/json",
+      responseSchema: buildVideoAnalysisSchema(),
+    },
+  });
+
+  const text = response.text;
+  if (!text) throw new Error("AIによる動画分析に失敗しました。");
+  const parsed = JSON.parse(text);
+
+  return {
+    videoTitle: String(parsed.videoTitle ?? "動画分析結果"),
+    overallComment: String(parsed.overallComment ?? ""),
+    cuts: Array.isArray(parsed.cuts)
+      ? parsed.cuts.map((c: { label?: unknown; timestamp?: unknown; score?: unknown; comment?: unknown }) => ({
+          label: String(c.label ?? ""),
+          timestamp: String(c.timestamp ?? ""),
+          score: (["◎", "○", "△"] as const).includes(c.score as "◎" | "○" | "△")
+            ? (c.score as "◎" | "○" | "△")
+            : "○",
+          comment: String(c.comment ?? ""),
+        }))
+      : [],
+  };
+}
+
+export interface VideoComparisonMetrics {
+  opening: number;
+  structure: number;
+  framing: number;
+  expression: number;
+  tempo: number;
+  editing: number;
+}
+
+export interface VideoComparisonSide {
+  title: string;
+  metrics: VideoComparisonMetrics;
+  note: string;
+}
+
+export interface VideoComparisonResult {
+  myVideo: VideoComparisonSide;
+  referenceVideo: VideoComparisonSide;
+  nextActions: string[];
+}
+
+function buildVideoComparisonSchema() {
+  const sideSchema = {
+    type: "object",
+    properties: {
+      title: { type: "string", description: "動画の内容が伝わる短いタイトル" },
+      metrics: {
+        type: "object",
+        properties: {
+          opening: { type: "number", description: "冒頭の掴みの強さ（0〜100の参考スコア）" },
+          structure: { type: "number", description: "構成の分かりやすさ（0〜100の参考スコア）" },
+          framing: { type: "number", description: "画角・カメラワークの良さ（0〜100の参考スコア）" },
+          expression: { type: "number", description: "表情・感情表現の豊かさ（0〜100の参考スコア）" },
+          tempo: { type: "number", description: "テンポの良さ（0〜100の参考スコア）" },
+          editing: { type: "number", description: "編集（テロップ・BGM・トランジション）の質（0〜100の参考スコア）" },
+        },
+        required: ["opening", "structure", "framing", "expression", "tempo", "editing"],
+      },
+      note: { type: "string", description: "この動画の特徴を1〜2文で（提案口調）" },
+    },
+    required: ["title", "metrics", "note"],
+  };
+  return {
+    type: "object",
+    properties: {
+      myVideo: sideSchema,
+      referenceVideo: sideSchema,
+      nextActions: {
+        type: "array",
+        items: { type: "string" },
+        minItems: 2,
+        maxItems: 4,
+        description: "2つの動画の違いから、自分の動画をどう改善できそうかの具体的な次の一歩を2〜4個",
+      },
+    },
+    required: ["myVideo", "referenceVideo", "nextActions"],
+  };
+}
+
+// 2本のYouTube動画（自分の投稿・参考にしたい投稿）を実際にGeminiに見比べさせ、
+// 冒頭・構成・画角・表情・テンポ・編集の観点でスコア化して比較する。
+// スコアはAIによる参考評価であり、絶対的な採点基準ではない旨をUI側で明示すること。
+export async function compareVideosFromUrls(
+  myVideoUrl: string,
+  referenceVideoUrl: string
+): Promise<VideoComparisonResult> {
+  const ai = getAiClient();
+
+  const systemInstruction = [
+    "あなたはタレント向けSNS支援サービス「ASOBI LAB」の動画分析AIです。",
+    "2本の動画を実際に見比べて、冒頭の掴み・構成・画角・表情・テンポ・編集の6項目それぞれを",
+    "0〜100の参考スコアで評価してください。スコアは厳密な採点ではなく、2本を比べたときの",
+    "相対的な目安として付けてください。",
+    "最後に、2本の違いから見えてくる改善の次の一歩を、断定的な『こうすべき』ではなく",
+    "『こういう工夫もあります』という提案口調で、小学生でも分かる易しい言葉で書いてください。",
+  ].join("\n");
+
+  const userPrompt =
+    "1本目の動画（myVideo）が「自分の投稿」、2本目の動画（referenceVideo）が「参考にしたい投稿」です。";
+
+  await pace();
+  const response = await ai.models.generateContent({
+    model: MODEL,
+    contents: [
+      {
+        role: "user",
+        parts: [
+          { text: userPrompt },
+          { fileData: { fileUri: myVideoUrl } },
+          { fileData: { fileUri: referenceVideoUrl } },
+        ],
+      },
+    ],
+    config: {
+      systemInstruction,
+      thinkingConfig: { thinkingBudget: 0 },
+      maxOutputTokens: 1024,
+      responseMimeType: "application/json",
+      responseSchema: buildVideoComparisonSchema(),
+    },
+  });
+
+  const text = response.text;
+  if (!text) throw new Error("AIによる動画比較に失敗しました。");
+  const parsed = JSON.parse(text);
+
+  const toSide = (side: {
+    title?: unknown;
+    metrics?: Partial<VideoComparisonMetrics>;
+    note?: unknown;
+  }): VideoComparisonSide => ({
+    title: String(side.title ?? ""),
+    metrics: {
+      opening: Number(side.metrics?.opening ?? 0),
+      structure: Number(side.metrics?.structure ?? 0),
+      framing: Number(side.metrics?.framing ?? 0),
+      expression: Number(side.metrics?.expression ?? 0),
+      tempo: Number(side.metrics?.tempo ?? 0),
+      editing: Number(side.metrics?.editing ?? 0),
+    },
+    note: String(side.note ?? ""),
+  });
+
+  return {
+    myVideo: toSide(parsed.myVideo ?? {}),
+    referenceVideo: toSide(parsed.referenceVideo ?? {}),
+    nextActions: Array.isArray(parsed.nextActions)
+      ? parsed.nextActions.map((a: unknown) => String(a)).filter(Boolean)
+      : [],
   };
 }

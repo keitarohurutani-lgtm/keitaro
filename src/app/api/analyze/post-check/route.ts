@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { postCheckCuts } from "@/lib/data";
 import { getCurrentUserId } from "@/lib/auth";
+import {
+  analyzeVideoFromUrl,
+  describeVideoAnalysisError,
+  extractYoutubeVideoId,
+  isSupportedVideoUrl,
+} from "@/lib/ai";
+
+// 動画をAIが実際に読み込んで分析するため、通常のAPI呼び出しより時間がかかることがある。
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const userId = await getCurrentUserId();
@@ -9,22 +17,40 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "ログインが必要です。" }, { status: 401 });
   }
 
-  let body: { videoName?: string } = {};
+  let body: { videoUrl?: string } = {};
   try {
     body = await request.json();
   } catch {
-    // ボディなしでも許容する
+    return NextResponse.json({ error: "リクエストの形式が不正です。" }, { status: 400 });
   }
-  const videoName = body.videoName?.trim() || "アップロードされた動画";
 
-  await prisma.activity.create({
-    data: {
-      userId,
-      type: "POST_CHECK",
-      text: `『${videoName}』をPOST CHECKで分析しました`,
-    },
-  });
+  const videoUrl = body.videoUrl?.trim();
+  if (!videoUrl) {
+    return NextResponse.json({ error: "動画のリンクを入力してください。" }, { status: 400 });
+  }
+  if (!isSupportedVideoUrl(videoUrl)) {
+    return NextResponse.json(
+      { error: "今のところYouTubeのリンクのみ対応しています（TikTok/Instagramは非対応）。" },
+      { status: 400 }
+    );
+  }
 
-  // 実際の映像フレーム解析は行っておらず、サンプルの分析コメントを返す簡易チェックです。
-  return NextResponse.json({ videoName, cuts: postCheckCuts });
+  try {
+    const analysis = await analyzeVideoFromUrl(videoUrl);
+
+    await prisma.activity.create({
+      data: {
+        userId,
+        type: "POST_CHECK",
+        text: `『${analysis.videoTitle}』をPOST CHECKで分析しました`,
+      },
+    });
+
+    const videoId = extractYoutubeVideoId(videoUrl);
+    const thumbnailUrl = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null;
+
+    return NextResponse.json({ videoUrl, thumbnailUrl, analysis });
+  } catch (err) {
+    return NextResponse.json({ error: describeVideoAnalysisError(err) }, { status: 500 });
+  }
 }

@@ -2,12 +2,43 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { BenchmarkVideo, PostCheckCut } from "@/lib/data";
 import { toast } from "@/lib/toast";
 
 type Tab = "check" | "benchmark";
 
-const metricLabels: Record<keyof BenchmarkVideo["metrics"], string> = {
+type Cut = {
+  label: string;
+  timestamp: string;
+  score: "◎" | "○" | "△";
+  comment: string;
+};
+
+type PostCheckResult = {
+  videoUrl: string;
+  thumbnailUrl: string | null;
+  analysis: { videoTitle: string; overallComment: string; cuts: Cut[] };
+};
+
+type Metrics = {
+  opening: number;
+  structure: number;
+  framing: number;
+  expression: number;
+  tempo: number;
+  editing: number;
+};
+
+type BenchmarkResult = {
+  myThumbnailUrl: string | null;
+  referenceThumbnailUrl: string | null;
+  comparison: {
+    myVideo: { title: string; metrics: Metrics; note: string };
+    referenceVideo: { title: string; metrics: Metrics; note: string };
+    nextActions: string[];
+  };
+};
+
+const metricLabels: Record<keyof Metrics, string> = {
   opening: "冒頭",
   structure: "構成",
   framing: "画角",
@@ -56,24 +87,37 @@ export default function AnalyzeClient() {
   );
 }
 
+function UrlInputNote() {
+  return (
+    <p className="mt-2 text-xs text-al-gray-400">
+      今のところYouTubeのリンクだけ使えます（TikTok・Instagramはまだ対応していません）。
+    </p>
+  );
+}
+
 function PostCheckPanel() {
   const router = useRouter();
-  const [cuts, setCuts] = useState<PostCheckCut[] | null>(null);
+  const [url, setUrl] = useState("");
+  const [result, setResult] = useState<PostCheckResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const runAnalysis = async () => {
+    if (!url.trim()) {
+      setError("動画のリンクを入力してください。");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/analyze/post-check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ videoName: "カフェ巡り朝ルーティン.mp4" }),
+        body: JSON.stringify({ videoUrl: url.trim() }),
       });
-      if (!res.ok) throw new Error("分析の記録に失敗しました。");
       const json = await res.json();
-      setCuts(json.cuts);
+      if (!res.ok) throw new Error(json.error ?? "分析に失敗しました。");
+      setResult(json);
       toast("分析が完了しました");
       router.refresh();
     } catch (err) {
@@ -88,44 +132,63 @@ function PostCheckPanel() {
   return (
     <div>
       <p className="max-w-xl text-sm text-al-gray-500">
-        動画をアップロードすると、6カットに分解して掴み・画角・表情・構成・テンポ・見せ方を簡易チェックします。
+        自分の動画のYouTubeリンクを貼ると、AIが最初から最後まで見て、場面ごとに画角・カット割り・編集のポイントをチェックします。
       </p>
 
-      {!cuts ? (
-        <button
-          onClick={runAnalysis}
-          disabled={loading}
-          className="mt-6 flex w-full flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-al-gray-300 px-6 py-14 text-center transition-colors hover:border-al-black disabled:opacity-60"
-        >
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-al-gray-100 font-display text-lg font-bold">
-            {loading ? "…" : "+"}
-          </span>
-          <span className="font-display text-sm font-bold">
-            {loading ? "分析中です…" : "動画をアップロードして分析する"}
-          </span>
-          <span className="text-xs text-al-gray-400">MP4 / MOV（サンプル動画で分析結果を表示します）</span>
-        </button>
+      {!result ? (
+        <div className="mt-6">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=..."
+              className="flex-1 rounded-xl border border-al-gray-200 px-4 py-3 text-sm outline-none focus:border-al-black"
+            />
+            <button
+              onClick={runAnalysis}
+              disabled={loading}
+              className="shrink-0 rounded-xl bg-al-black px-6 py-3 font-display text-sm font-bold text-white transition-transform hover:scale-[1.02] disabled:opacity-60"
+            >
+              {loading ? "分析中です…" : "この動画を分析する"}
+            </button>
+          </div>
+          <UrlInputNote />
+        </div>
       ) : (
         <div className="mt-6">
-          <div
-            className="flex h-40 items-end rounded-2xl p-4 text-white"
-            style={{ background: "linear-gradient(135deg,#0B0B0C,#2F7DFF)" }}
-          >
-            <p className="font-display text-sm font-bold">カフェ巡り朝ルーティン.mp4</p>
+          <div className="overflow-hidden rounded-2xl border border-al-gray-200">
+            {result.thumbnailUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={result.thumbnailUrl}
+                alt={result.analysis.videoTitle}
+                className="h-40 w-full object-cover"
+              />
+            )}
+            <div className="p-3">
+              <p className="font-display text-sm font-bold leading-snug">
+                {result.analysis.videoTitle}
+              </p>
+            </div>
           </div>
 
           <div className="mt-4 rounded-xl bg-al-gray-50 px-4 py-3 text-xs leading-relaxed text-al-gray-600">
             ⚠️ AIによる参考分析です。100%正確ではありません。投稿改善のヒントとしてご活用ください。
           </div>
 
+          <p className="mt-4 text-sm leading-relaxed text-al-gray-600">
+            {result.analysis.overallComment}
+          </p>
+
           <div className="mt-6 space-y-3">
-            {cuts.map((cut) => (
+            {result.analysis.cuts.map((cut, i) => (
               <div
-                key={cut.index}
+                key={i}
                 className="flex items-start gap-4 rounded-xl border border-al-gray-200 p-4"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-al-black font-display text-sm font-bold text-white">
-                  {cut.index}
+                  {i + 1}
                 </div>
                 <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -150,7 +213,10 @@ function PostCheckPanel() {
           </div>
 
           <button
-            onClick={() => setCuts(null)}
+            onClick={() => {
+              setResult(null);
+              setUrl("");
+            }}
             className="mt-6 text-sm font-bold text-al-purple hover:underline"
           >
             別の動画を分析する
@@ -164,20 +230,27 @@ function PostCheckPanel() {
 
 function BenchmarkPanel() {
   const router = useRouter();
-  const [result, setResult] = useState<{
-    pair: { mine: BenchmarkVideo; reference: BenchmarkVideo };
-    nextActions: string[];
-  } | null>(null);
+  const [myUrl, setMyUrl] = useState("");
+  const [refUrl, setRefUrl] = useState("");
+  const [result, setResult] = useState<BenchmarkResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const runCompare = async () => {
+    if (!myUrl.trim() || !refUrl.trim()) {
+      setError("自分の投稿・参考にしたい投稿、両方のリンクを入力してください。");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/analyze/benchmark", { method: "POST" });
-      if (!res.ok) throw new Error("比較の記録に失敗しました。");
+      const res = await fetch("/api/analyze/benchmark", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ myVideoUrl: myUrl.trim(), referenceVideoUrl: refUrl.trim() }),
+      });
       const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "比較に失敗しました。");
       setResult(json);
       toast("比較が完了しました");
       router.refresh();
@@ -194,29 +267,48 @@ function BenchmarkPanel() {
     return (
       <div>
         <p className="max-w-xl text-sm text-al-gray-500">
-          自分の投稿と参考にしたい投稿を項目別に比較し、どこが違うのかを可視化します。
+          自分の投稿と参考にしたい投稿、両方のYouTubeリンクを貼ると、AIが見比べて項目別にどこが違うのかを教えてくれます。
         </p>
-        <button
-          onClick={runCompare}
-          disabled={loading}
-          className="mt-6 flex w-full flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-al-gray-300 px-6 py-14 text-center transition-colors hover:border-al-black disabled:opacity-60"
-        >
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-al-gray-100 font-display text-lg font-bold">
-            {loading ? "…" : "+"}
-          </span>
-          <span className="font-display text-sm font-bold">
-            {loading ? "比較中です…" : "参考投稿と比較する"}
-          </span>
-          <span className="text-xs text-al-gray-400">
-            サンプル：カフェ巡り朝ルーティン vs 朝ルーティン『5分で外出』
-          </span>
-        </button>
+        <div className="mt-6 space-y-3">
+          <div>
+            <label className="mb-1 block font-display text-xs font-bold text-al-gray-500">
+              あなたの投稿
+            </label>
+            <input
+              type="url"
+              value={myUrl}
+              onChange={(e) => setMyUrl(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=..."
+              className="w-full rounded-xl border border-al-gray-200 px-4 py-3 text-sm outline-none focus:border-al-black"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block font-display text-xs font-bold text-al-gray-500">
+              参考にしたい投稿
+            </label>
+            <input
+              type="url"
+              value={refUrl}
+              onChange={(e) => setRefUrl(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=..."
+              className="w-full rounded-xl border border-al-gray-200 px-4 py-3 text-sm outline-none focus:border-al-black"
+            />
+          </div>
+          <UrlInputNote />
+          <button
+            onClick={runCompare}
+            disabled={loading}
+            className="w-full rounded-xl bg-al-black px-6 py-3 font-display text-sm font-bold text-white transition-transform hover:scale-[1.02] disabled:opacity-60"
+          >
+            {loading ? "比較中です…" : "この2本を比較する"}
+          </button>
+        </div>
         {error && <p className="mt-4 text-xs text-red-600">{error}</p>}
       </div>
     );
   }
 
-  const { mine, reference } = result.pair;
+  const { myVideo, referenceVideo, nextActions } = result.comparison;
 
   return (
     <div>
@@ -224,44 +316,51 @@ function BenchmarkPanel() {
         自分の投稿と参考にしたい投稿を項目別に比較し、どこが違うのかを可視化します。
       </p>
 
+      <div className="mt-4 rounded-xl bg-al-gray-50 px-4 py-3 text-xs leading-relaxed text-al-gray-600">
+        ⚠️ AIによる参考評価です。100%正確ではありません。投稿改善のヒントとしてご活用ください。
+      </div>
+
       <div className="mt-6 grid grid-cols-2 gap-3">
-        {[mine, reference].map((v) => (
-          <div key={v.id} className="overflow-hidden rounded-2xl border border-al-gray-200">
-            <div
-              className="flex h-24 items-end p-3"
-              style={{
-                background: `linear-gradient(135deg, ${v.thumbnailFrom}, ${v.thumbnailTo})`,
-              }}
-            >
-              <span className="rounded-full bg-white/90 px-2 py-0.5 font-display text-[10px] font-bold">
-                {v.label}
-              </span>
-            </div>
+        {[
+          { v: myVideo, label: "あなたの投稿", thumb: result.myThumbnailUrl },
+          { v: referenceVideo, label: "参考投稿", thumb: result.referenceThumbnailUrl },
+        ].map(({ v, label, thumb }) => (
+          <div key={label} className="overflow-hidden rounded-2xl border border-al-gray-200">
+            {thumb ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={thumb} alt={v.title} className="h-24 w-full object-cover" />
+            ) : (
+              <div className="flex h-24 items-end bg-al-gray-100 p-3">
+                <span className="rounded-full bg-white/90 px-2 py-0.5 font-display text-[10px] font-bold">
+                  {label}
+                </span>
+              </div>
+            )}
             <div className="p-3">
               <p className="font-display text-sm font-bold leading-snug">{v.title}</p>
-              <p className="mt-0.5 text-xs text-al-gray-400">{v.creator}</p>
+              <p className="mt-0.5 text-xs text-al-gray-400">{label}</p>
             </div>
           </div>
         ))}
       </div>
 
       <div className="mt-6 space-y-4">
-        {(Object.keys(metricLabels) as (keyof BenchmarkVideo["metrics"])[]).map((key) => (
+        {(Object.keys(metricLabels) as (keyof Metrics)[]).map((key) => (
           <div key={key}>
             <div className="mb-1 flex items-center justify-between text-xs font-bold text-al-gray-500">
               <span>{metricLabels[key]}</span>
               <span>
-                {mine.metrics[key]} / {reference.metrics[key]}
+                {myVideo.metrics[key]} / {referenceVideo.metrics[key]}
               </span>
             </div>
             <div className="relative h-2 overflow-hidden rounded-full bg-al-gray-100">
               <div
                 className="absolute inset-y-0 left-0 rounded-full bg-al-gray-400"
-                style={{ width: `${mine.metrics[key]}%` }}
+                style={{ width: `${myVideo.metrics[key]}%` }}
               />
               <div
                 className="absolute inset-y-0 left-0 rounded-full bg-al-pink opacity-70 mix-blend-multiply"
-                style={{ width: `${reference.metrics[key]}%` }}
+                style={{ width: `${referenceVideo.metrics[key]}%` }}
               />
             </div>
           </div>
@@ -281,11 +380,11 @@ function BenchmarkPanel() {
       <div className="mt-6 space-y-2 rounded-xl bg-al-gray-50 p-4 text-sm leading-relaxed text-al-gray-600">
         <p>
           <span className="font-bold text-al-black">あなたの投稿：</span>
-          {mine.note}
+          {myVideo.note}
         </p>
         <p>
           <span className="font-bold text-al-black">参考投稿：</span>
-          {reference.note}
+          {referenceVideo.note}
         </p>
       </div>
 
@@ -294,7 +393,7 @@ function BenchmarkPanel() {
           NEXT ACTION
         </p>
         <ul className="mt-3 space-y-2">
-          {result.nextActions.map((action) => (
+          {nextActions.map((action) => (
             <li key={action} className="flex items-start gap-2 text-sm leading-relaxed">
               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-al-lime" />
               {action}
@@ -304,7 +403,11 @@ function BenchmarkPanel() {
       </div>
 
       <button
-        onClick={() => setResult(null)}
+        onClick={() => {
+          setResult(null);
+          setMyUrl("");
+          setRefUrl("");
+        }}
         className="mt-6 text-sm font-bold text-al-purple hover:underline"
       >
         別の投稿と比較する
