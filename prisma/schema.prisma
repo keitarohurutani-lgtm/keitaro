@@ -63,6 +63,7 @@ model Trend {
   artistName    String? // 音源カテゴリの場合の歌手・アーティスト名
   songTitle     String? // 音源カテゴリの場合の曲名
   searchKeywords String[] @default([]) // このトレンドの参考動画を探すための検索キーワード・ハッシュタグ案
+  videoAnalysis String? // Geminiが実際に動画を見て分析した、画角・カット割り・編集のポイント（YOUTUBE実データのみ）
   fetchedAt     DateTime    @default(now())
 
   ideas Idea[]

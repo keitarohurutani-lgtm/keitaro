@@ -51,6 +51,12 @@ export default function TrendCard({
             <span className="font-bold text-al-black">使い方 </span>
             {trend.howToUse}
           </p>
+          {trend.videoAnalysis && (
+            <p>
+              <span className="font-bold text-al-black">画角・編集のポイント </span>
+              {trend.videoAnalysis}
+            </p>
+          )}
         </div>
         {trend.sourceUrl && (
           <a

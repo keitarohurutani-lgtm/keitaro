@@ -13,7 +13,7 @@
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { fetchTrendingVideos, formatViewCount } from "@/lib/sources/youtube";
-import { summarizeYoutubeTrend, extractSongInfo } from "@/lib/ai";
+import { summarizeYoutubeTrend, extractSongInfo, analyzeVideoFromUrl } from "@/lib/ai";
 import { getWeekStart } from "@/lib/week";
 
 export const TREND_CATEGORIES = [
@@ -107,6 +107,18 @@ export async function syncTrends(prisma: PrismaClient): Promise<SyncTrendsResult
         categories: TREND_CATEGORIES,
       });
 
+      // 実際に動画を見て画角・カット割り・編集のポイントを分析する（重い呼び出しのため
+      // カテゴリー代表の1本のみ）。失敗してもトレンド自体の更新は続行する。
+      let videoAnalysis: string | null = null;
+      try {
+        const analysis = await analyzeVideoFromUrl(video.url);
+        videoAnalysis = analysis.overallComment || null;
+      } catch (analysisErr) {
+        result.log.push(
+          `[${category}] 動画分析に失敗しました（トレンド自体は更新します）: ${analysisErr instanceof Error ? analysisErr.message : String(analysisErr)}`
+        );
+      }
+
       const [from, to] = CATEGORY_GRADIENT[category];
       const existing = await prisma.trend.findFirst({ where: { sourceUrl: video.url } });
 
@@ -125,6 +137,7 @@ export async function syncTrends(prisma: PrismaClient): Promise<SyncTrendsResult
         artistName: summary.artistName,
         songTitle: summary.songTitle,
         searchKeywords: summary.searchKeywords,
+        videoAnalysis,
         fetchedAt: new Date(),
       };
 
