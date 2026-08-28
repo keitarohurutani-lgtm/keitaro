@@ -11,8 +11,7 @@ export const desktopNav: NavItem[] = [
   { href: "/", label: "TODAY", sub: "今日のアクション" },
   { href: "/trend", label: "TREND", sub: "トレンド" },
   { href: "/idea", label: "IDEA", sub: "企画のヒント" },
-  { href: "/analyze?tab=benchmark", label: "BENCHMARK", sub: "比較する" },
-  { href: "/analyze?tab=check", label: "ANALYZE", sub: "動画をチェック" },
+  { href: "/analyze", label: "ANALYZE", sub: "動画をチェック" },
   { href: "/report", label: "MY REPORT", sub: "活動を振り返る" },
   { href: "/faq", label: "FAQ", sub: "よくある質問" },
 ];

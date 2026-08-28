@@ -37,15 +37,6 @@ export function IconIdea({ className }: IconProps) {
   );
 }
 
-export function IconBenchmark({ className }: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} {...base}>
-      <path d="M6 20V10M12 20V4M18 20v-7" />
-      <path d="M3 20h18" />
-    </svg>
-  );
-}
-
 export function IconAnalyze({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" className={className} {...base}>
@@ -79,7 +70,6 @@ export const navIcons: Record<string, (p: IconProps) => React.ReactElement> = {
   TODAY: IconToday,
   TREND: IconTrend,
   IDEA: IconIdea,
-  BENCHMARK: IconBenchmark,
   ANALYZE: IconAnalyze,
   "MY REPORT": IconReport,
   MY: IconReport,

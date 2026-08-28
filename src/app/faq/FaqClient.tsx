@@ -63,11 +63,44 @@ const GEAR: { name: string; note: string }[] = [
   { name: "保存容量（SDカード・クラウド保存）", note: "動画はデータが大きいので、容量に余裕を持たせておきましょう。" },
 ];
 
-const APPS: { name: string; note: string }[] = [
-  { name: "CapCut", note: "無料で使える定番アプリ。テロップやテンポの編集がしやすいです。" },
-  { name: "VN", note: "シンプルな操作で、細かい編集もしやすいアプリです。" },
-  { name: "InShot", note: "初心者でも直感的に使いやすいアプリです。" },
-  { name: "TikTok／Instagram本体の編集機能", note: "まずはアプリ内の機能から試してみるのもおすすめです。" },
+const APPS: { name: string; features: string[]; bestFor: string }[] = [
+  {
+    name: "CapCut",
+    features: [
+      "TikTokと同じ会社が作っているので、TikTokで流行っている音源・エフェクト・テンプレートにすぐアクセスできる",
+      "話した内容を自動でテロップにしてくれる機能がある",
+      "無料でも高機能で、透かし（ロゴ）も入らない",
+    ],
+    bestFor: "TikTok向け。テンプレートに沿って作るだけで、流行りに乗った動画が作りやすいです。",
+  },
+  {
+    name: "VN",
+    features: [
+      "音や映像を何層にも重ねる細かい編集ができる",
+      "色味の調整など、こだわった仕上がりにしやすい",
+      "操作はシンプルなまま、機能だけが本格的",
+    ],
+    bestFor:
+      "YouTube向け。じっくり作り込みたい・長めの動画を編集したい人に向いています。",
+  },
+  {
+    name: "InShot",
+    features: [
+      "正方形・縦長・横長など、投稿先に合わせた画面比率にすぐ変えられる",
+      "BGM・効果音の種類が豊富",
+      "操作画面が分かりやすく、初めてでも迷いにくい",
+    ],
+    bestFor:
+      "Instagram向け。フィード投稿とリールで比率を変えたいときに扱いやすいです。",
+  },
+  {
+    name: "TikTok／Instagram本体の編集機能",
+    features: [
+      "アプリを切り替えずに、撮影から投稿までその場で完結する",
+      "そのアプリだけの音源・エフェクトに直接アクセスできる",
+    ],
+    bestFor: "どちらの媒体でも、とにかく手軽にサクッと編集したいときに向いています。",
+  },
 ];
 
 export default function FaqClient() {
@@ -140,11 +173,25 @@ export default function FaqClient() {
             <p className="mb-4 text-xs text-al-gray-400">
               どれも無料プランで十分使えます。アプリの機能や仕様は変わることがあるので、実際に開いて確認してみてください。
             </p>
-            <div className="al-flyer-card divide-y divide-al-gray-100 rounded-2xl">
+            <div className="space-y-4">
               {APPS.map((a) => (
-                <div key={a.name} className="p-4">
-                  <p className="font-display text-sm font-bold">{a.name}</p>
-                  <p className="mt-1 text-sm leading-relaxed text-al-gray-600">{a.note}</p>
+                <div key={a.name} className="al-flyer-card rounded-2xl p-4">
+                  <p className="font-display text-base font-bold">{a.name}</p>
+                  <ul className="mt-2 space-y-1">
+                    {a.features.map((f) => (
+                      <li
+                        key={f}
+                        className="flex items-start gap-2 text-sm leading-relaxed text-al-gray-600"
+                      >
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-al-purple" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-3 rounded-lg bg-al-gray-50 px-3 py-2 text-xs leading-relaxed text-al-gray-500">
+                    <span className="font-display font-bold text-al-black">向いている媒体：</span>
+                    {a.bestFor}
+                  </p>
                 </div>
               ))}
             </div>

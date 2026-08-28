@@ -181,9 +181,24 @@ function buildTrendSummarySchema(categories: readonly string[]) {
     type: "object",
     properties: {
       category: { type: "string", enum: [...categories] },
-      description: { type: "string", description: "この動画が示すトレンドの説明（1文）" },
-      whyHot: { type: "string", description: "なぜ今注目されているか（1〜2文）" },
-      howToUse: { type: "string", description: "タレントが投稿に取り入れる際のおすすめの使い方（1〜2文）" },
+      description: {
+        type: "string",
+        description:
+          "この動画が実際に何をしている動画なのか、具体的な内容（構成・動作・見せ方など）を1〜2文で。" +
+          "『〇〇が話題』のような抽象的な言い方ではなく、動画の中で実際に起きていることを説明する。",
+      },
+      whyHot: {
+        type: "string",
+        description:
+          "なぜ今、視聴者に刺さっているのか、動画の具体的な要素（例：冒頭の見せ方、テンポ、意外性など）を根拠に1〜2文で。",
+      },
+      howToUse: {
+        type: "string",
+        description:
+          "『あなたなら』このトレンドをどう自分の投稿に落とし込めるか、具体的な行動として2文程度で。" +
+          "『こんな方法もあります』ではなく、『まず〇〇を撮ってみる』『〇〇の場面で△△を意識してみる』のように、" +
+          "読んだ人がそのまま真似できるくらい具体的なアクションで書く。",
+      },
       artistName: {
         type: "string",
         description:
@@ -231,6 +246,9 @@ export async function summarizeYoutubeTrend(params: {
     "あなたはタレント向けSNS支援サービス「ASOBI LAB」のトレンド分析AIです。",
     "実際にYouTubeで再生数が伸びている動画の情報をもとに、タレントスクール所属者向けに",
     "『なぜ注目されているか』『どう投稿に取り入れるか』を提案口調（断定しない）で短くまとめてください。",
+    "『〇〇が伸びやすい傾向にある』のような抽象的な一般論ではなく、この動画で実際に起きている",
+    "具体的な内容を根拠にしてください。使い方は、読んだタレント本人がそのまま真似できるくらい",
+    "具体的な行動（何をどう撮るか・何を意識するか）として書いてください。",
     "動画に書かれていない事実を創作しないでください。情報が不足する場合は一般的な傾向として書いてください。",
     "カテゴリーが「音源」の場合のみ、動画タイトル・チャンネル名から歌手/アーティスト名と曲名を",
     "読み取れる範囲で抽出してください（読み取れない場合や音源カテゴリでない場合は空文字にする）。",
@@ -453,138 +471,6 @@ export async function analyzeVideoFromUrl(videoUrl: string): Promise<VideoAnalys
             : "○",
           comment: String(c.comment ?? ""),
         }))
-      : [],
-  };
-}
-
-export interface VideoComparisonMetrics {
-  opening: number;
-  structure: number;
-  framing: number;
-  expression: number;
-  tempo: number;
-  editing: number;
-}
-
-export interface VideoComparisonSide {
-  title: string;
-  metrics: VideoComparisonMetrics;
-  note: string;
-}
-
-export interface VideoComparisonResult {
-  myVideo: VideoComparisonSide;
-  referenceVideo: VideoComparisonSide;
-  nextActions: string[];
-}
-
-function buildVideoComparisonSchema() {
-  const sideSchema = {
-    type: "object",
-    properties: {
-      title: { type: "string", description: "動画の内容が伝わる短いタイトル" },
-      metrics: {
-        type: "object",
-        properties: {
-          opening: { type: "number", description: "冒頭の掴みの強さ（0〜100の参考スコア）" },
-          structure: { type: "number", description: "構成の分かりやすさ（0〜100の参考スコア）" },
-          framing: { type: "number", description: "画角・カメラワークの良さ（0〜100の参考スコア）" },
-          expression: { type: "number", description: "表情・感情表現の豊かさ（0〜100の参考スコア）" },
-          tempo: { type: "number", description: "テンポの良さ（0〜100の参考スコア）" },
-          editing: { type: "number", description: "編集（テロップ・BGM・トランジション）の質（0〜100の参考スコア）" },
-        },
-        required: ["opening", "structure", "framing", "expression", "tempo", "editing"],
-      },
-      note: { type: "string", description: "この動画の特徴を1〜2文で（提案口調）" },
-    },
-    required: ["title", "metrics", "note"],
-  };
-  return {
-    type: "object",
-    properties: {
-      myVideo: sideSchema,
-      referenceVideo: sideSchema,
-      nextActions: {
-        type: "array",
-        items: { type: "string" },
-        minItems: 2,
-        maxItems: 4,
-        description: "2つの動画の違いから、自分の動画をどう改善できそうかの具体的な次の一歩を2〜4個",
-      },
-    },
-    required: ["myVideo", "referenceVideo", "nextActions"],
-  };
-}
-
-// 2本のYouTube動画（自分の投稿・参考にしたい投稿）を実際にGeminiに見比べさせ、
-// 冒頭・構成・画角・表情・テンポ・編集の観点でスコア化して比較する。
-// スコアはAIによる参考評価であり、絶対的な採点基準ではない旨をUI側で明示すること。
-export async function compareVideosFromUrls(
-  myVideoUrl: string,
-  referenceVideoUrl: string
-): Promise<VideoComparisonResult> {
-  const ai = getAiClient();
-
-  const systemInstruction = [
-    "あなたはタレント向けSNS支援サービス「ASOBI LAB」の動画分析AIです。",
-    "2本の動画を実際に見比べて、冒頭の掴み・構成・画角・表情・テンポ・編集の6項目それぞれを",
-    "0〜100の参考スコアで評価してください。スコアは厳密な採点ではなく、2本を比べたときの",
-    "相対的な目安として付けてください。",
-    "最後に、2本の違いから見えてくる改善の次の一歩を、断定的な『こうすべき』ではなく",
-    "『こういう工夫もあります』という提案口調で、小学生でも分かる易しい言葉で書いてください。",
-  ].join("\n");
-
-  const userPrompt =
-    "1本目の動画（myVideo）が「自分の投稿」、2本目の動画（referenceVideo）が「参考にしたい投稿」です。";
-
-  await pace();
-  const response = await ai.models.generateContent({
-    model: MODEL,
-    contents: [
-      {
-        role: "user",
-        parts: [
-          { text: userPrompt },
-          { fileData: { fileUri: myVideoUrl } },
-          { fileData: { fileUri: referenceVideoUrl } },
-        ],
-      },
-    ],
-    config: {
-      systemInstruction,
-      thinkingConfig: { thinkingBudget: 0 },
-      maxOutputTokens: 1024,
-      responseMimeType: "application/json",
-      responseSchema: buildVideoComparisonSchema(),
-    },
-  });
-
-  const text = response.text;
-  if (!text) throw new Error("AIによる動画比較に失敗しました。");
-  const parsed = JSON.parse(text);
-
-  const toSide = (side: {
-    title?: unknown;
-    metrics?: Partial<VideoComparisonMetrics>;
-    note?: unknown;
-  }): VideoComparisonSide => ({
-    title: String(side.title ?? ""),
-    metrics: {
-      opening: Number(side.metrics?.opening ?? 0),
-      structure: Number(side.metrics?.structure ?? 0),
-      framing: Number(side.metrics?.framing ?? 0),
-      expression: Number(side.metrics?.expression ?? 0),
-      tempo: Number(side.metrics?.tempo ?? 0),
-      editing: Number(side.metrics?.editing ?? 0),
-    },
-    note: String(side.note ?? ""),
-  });
-
-  return {
-    myVideo: toSide(parsed.myVideo ?? {}),
-    referenceVideo: toSide(parsed.referenceVideo ?? {}),
-    nextActions: Array.isArray(parsed.nextActions)
-      ? parsed.nextActions.map((a: unknown) => String(a)).filter(Boolean)
       : [],
   };
 }

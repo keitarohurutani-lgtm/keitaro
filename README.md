@@ -22,7 +22,7 @@ npm run dev    # http://localhost:3000
 | `CRON_SECRET` | `/api/cron/sync-trends` をVercel Cron以外から叩けないようにする鍵 | 本番では推奨（Vercelが自動でAuthorizationヘッダーに付与） |
 | `SESSION_SECRET` | ログインセッションCookieの署名鍵 | 本番では必須（未設定時は開発用の固定値にフォールバックし、誰でもセッションを偽造できてしまう） |
 
-`GEMINI_API_KEY` / `YOUTUBE_API_KEY` が未設定でもアプリ自体は起動し、該当機能だけがエラーメッセージ付きで無効になります（DB永続化・保存済み企画の閲覧・POST CHECK/BENCHMARKのログ記録などは鍵なしで動作）。`SESSION_SECRET` は本番運用前に必ず設定してください（`openssl rand -hex 32` などで生成）。
+`GEMINI_API_KEY` / `YOUTUBE_API_KEY` が未設定でもアプリ自体は起動し、該当機能だけがエラーメッセージ付きで無効になります（DB永続化・保存済み企画の閲覧などは鍵なしで動作）。`SESSION_SECRET` は本番運用前に必ず設定してください（`openssl rand -hex 32` などで生成）。
 
 ## アカウント・データ分離
 
@@ -47,15 +47,17 @@ npm run dev    # http://localhost:3000
 
 IDEAページの「AIに企画を提案してもらう」は `src/lib/ai.ts` の `generateIdeaFromTrend` が担当します。選んだトレンドとキャラクタータイプ（元気印/クール/ほんわか/毒舌気味/正統派）を渡すと、Gemini（`gemini-3.1-flash-lite`）が構造化JSONで企画タイトル・理由・POST PLAN（冒頭1秒・撮影場所・表情・構成・尺・オチ）を生成し、DBに保存します。断定口調ではなく提案口調で出力するようシステムプロンプトで指定しています。
 
-## POST CHECK / BENCHMARK について
+## POST CHECK について
 
 動画ファイルのアップロードではなく、**リンクを貼るリンク提出型**です。
 
-- **YouTube**：Geminiの動画理解機能（`fileData.fileUri`にYouTube URLを渡す）で実際にその動画を最初から最後まで読み込み、場面ごとの画角・カット割り・編集（テロップ・BGM・トランジション等）を実際に観測した内容として分析します（`src/lib/ai.ts` の `analyzeVideoFromUrl` / `compareVideosFromUrls`）。POST CHECK・BENCHMARKともに対応。
-- **TikTok**（POST CHECKのみ）：公式oEmbed API（認証不要）で実際の動画を埋め込み表示できますが、GeminiがTikTokの動画URLを直接処理できない（400 INVALID_ARGUMENTになることを確認済み）ため、AIによる画角・編集分析は行いません。
+- **YouTube**：Geminiの動画理解機能（`fileData.fileUri`にYouTube URLを渡す）で実際にその動画を最初から最後まで読み込み、場面ごとの画角・カット割り・編集（テロップ・BGM・トランジション等）を実際に観測した内容として分析します（`src/lib/ai.ts` の `analyzeVideoFromUrl`）。
+- **TikTok**：公式oEmbed API（認証不要）で実際の動画を埋め込み表示できますが、GeminiがTikTokの動画URLを直接処理できない（400 INVALID_ARGUMENTになることを確認済み）ため、AIによる画角・編集分析は行いません。
 - **Instagram**：埋め込み用APIも認証必須（アプリ審査が必要）のため非対応です。
 
-BENCHMARKの0〜100スコアはAIによる相対評価であり、厳密な採点基準ではありません（YouTube同士の組み合わせのみ対応）。実行したこと自体はActivityとしてDBに記録され、MY REPORTの実数値に反映されます。画面には常に「AIによる参考分析です」という注意書きを表示しています。
+実行したこと自体はActivityとしてDBに記録され、MY REPORTの実数値に反映されます。画面には常に「AIによる参考分析です」という注意書きを表示しています。
+
+（旧BENCHMARK機能・2本の動画を比較する機能は削除しました。）
 
 ## デプロイ（Vercel + Neon、完全無料・永続）
 
