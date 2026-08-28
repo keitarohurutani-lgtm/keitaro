@@ -31,3 +31,42 @@ export async function fetchTikTokTrends(query: string): Promise<TikTokTrendVideo
   }
   throw new Error("TikTok連携は未実装です（APIキー設定後、実装が必要です）。");
 }
+
+// ここから下は上記スタブとは別物。TikTokの公開oEmbed API（認証不要・審査不要）で、
+// 個別動画の実データ（タイトル・投稿者名・埋め込み用HTML）だけを取得する機能。
+// 動画のピクセル自体は取得できないため、AIによる画角・編集分析はできない
+// （Gemini自体もTikTokの動画URLを直接処理できないことを確認済み）。
+// POST CHECKで「動画を実際に表示はできるが、AI分析はYouTubeのみ」という用途で使う。
+
+export interface TikTokOembed {
+  title: string;
+  authorName: string;
+  authorUrl: string;
+  embedHtml: string;
+}
+
+export function isTikTokUrl(url: string): boolean {
+  try {
+    return /(^|\.)tiktok\.com$/.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+export async function fetchTikTokOembed(videoUrl: string): Promise<TikTokOembed | null> {
+  const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(videoUrl)}`);
+  if (!res.ok) return null;
+  const json = (await res.json()) as {
+    title?: string;
+    author_name?: string;
+    author_url?: string;
+    html?: string;
+  };
+  if (!json.html) return null;
+  return {
+    title: json.title ?? "",
+    authorName: json.author_name ?? "",
+    authorUrl: json.author_url ?? "",
+    embedHtml: json.html,
+  };
+}

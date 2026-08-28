@@ -7,6 +7,7 @@ import {
   extractYoutubeVideoId,
   isSupportedVideoUrl,
 } from "@/lib/ai";
+import { fetchTikTokOembed, isTikTokUrl } from "@/lib/sources/tiktok";
 
 // 動画をAIが実際に読み込んで分析するため、通常のAPI呼び出しより時間がかかることがある。
 export const maxDuration = 60;
@@ -28,9 +29,32 @@ export async function POST(request: Request) {
   if (!videoUrl) {
     return NextResponse.json({ error: "動画のリンクを入力してください。" }, { status: 400 });
   }
+
+  // TikTok: 実際の動画表示（公式oEmbed）はできるが、AIによる画角・編集分析はできない
+  // （Gemini自体がTikTokの動画URLを処理できないため）。
+  if (isTikTokUrl(videoUrl)) {
+    const oembed = await fetchTikTokOembed(videoUrl);
+    if (!oembed) {
+      return NextResponse.json(
+        { error: "この動画を読み込めませんでした。URLが正しいか、動画が公開設定になっているかご確認ください。" },
+        { status: 400 }
+      );
+    }
+
+    await prisma.activity.create({
+      data: {
+        userId,
+        type: "POST_CHECK",
+        text: `『${oembed.title || "TikTok動画"}』をPOST CHECKで確認しました`,
+      },
+    });
+
+    return NextResponse.json({ videoUrl, platform: "tiktok", oembed });
+  }
+
   if (!isSupportedVideoUrl(videoUrl)) {
     return NextResponse.json(
-      { error: "今のところYouTubeのリンクのみ対応しています（TikTok/Instagramは非対応）。" },
+      { error: "対応しているのはYouTubeとTikTokのリンクです（Instagramは非対応）。" },
       { status: 400 }
     );
   }
@@ -49,7 +73,7 @@ export async function POST(request: Request) {
     const videoId = extractYoutubeVideoId(videoUrl);
     const thumbnailUrl = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null;
 
-    return NextResponse.json({ videoUrl, thumbnailUrl, analysis });
+    return NextResponse.json({ videoUrl, platform: "youtube", thumbnailUrl, analysis });
   } catch (err) {
     return NextResponse.json({ error: describeVideoAnalysisError(err) }, { status: 500 });
   }

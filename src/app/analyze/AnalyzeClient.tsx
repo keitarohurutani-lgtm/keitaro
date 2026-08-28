@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@/lib/toast";
 
@@ -13,11 +13,18 @@ type Cut = {
   comment: string;
 };
 
-type PostCheckResult = {
-  videoUrl: string;
-  thumbnailUrl: string | null;
-  analysis: { videoTitle: string; overallComment: string; cuts: Cut[] };
-};
+type PostCheckResult =
+  | {
+      platform: "youtube";
+      videoUrl: string;
+      thumbnailUrl: string | null;
+      analysis: { videoTitle: string; overallComment: string; cuts: Cut[] };
+    }
+  | {
+      platform: "tiktok";
+      videoUrl: string;
+      oembed: { title: string; authorName: string; authorUrl: string; embedHtml: string };
+    };
 
 type Metrics = {
   opening: number;
@@ -90,9 +97,25 @@ export default function AnalyzeClient() {
 function UrlInputNote() {
   return (
     <p className="mt-2 text-xs text-al-gray-400">
-      今のところYouTubeのリンクだけ使えます（TikTok・Instagramはまだ対応していません）。
+      YouTubeは動画を見て詳しく分析します。TikTokは動画の表示のみ対応（AI分析はできません）。Instagramはまだ対応していません。
     </p>
   );
+}
+
+// TikTokの埋め込みHTML（公式oEmbedのblockquote）は、このスクリプトが読み込まれて
+// 初めて実際のプレーヤーとして描画される。新しいoEmbedを表示するたびに再実行させるため、
+// 毎回スクリプトタグを追加し直す（TikTok公式の埋め込み方式）。
+function TikTokEmbedScript({ embedHtml }: { embedHtml: string }) {
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://www.tiktok.com/embed.js";
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, [embedHtml]);
+  return null;
 }
 
 function PostCheckPanel() {
@@ -132,7 +155,7 @@ function PostCheckPanel() {
   return (
     <div>
       <p className="max-w-xl text-sm text-al-gray-500">
-        自分の動画のYouTubeリンクを貼ると、AIが最初から最後まで見て、場面ごとに画角・カット割り・編集のポイントをチェックします。
+        自分の動画のリンクを貼ると、AIが最初から最後まで見て、場面ごとに画角・カット割り・編集のポイントをチェックします。
       </p>
 
       {!result ? (
@@ -154,6 +177,27 @@ function PostCheckPanel() {
             </button>
           </div>
           <UrlInputNote />
+        </div>
+      ) : result.platform === "tiktok" ? (
+        <div className="mt-6">
+          <div className="rounded-xl bg-al-gray-50 px-4 py-3 text-xs leading-relaxed text-al-gray-600">
+            TikTokの動画はここに表示できますが、AIによる画角・編集の分析には対応していません（詳しく分析したい場合はYouTubeのリンクをお使いください）。
+          </div>
+          <TikTokEmbedScript embedHtml={result.oembed.embedHtml} />
+          <div
+            className="mt-4 overflow-hidden rounded-2xl"
+            dangerouslySetInnerHTML={{ __html: result.oembed.embedHtml }}
+          />
+          <p className="mt-3 text-xs text-al-gray-500">投稿者：{result.oembed.authorName}</p>
+          <button
+            onClick={() => {
+              setResult(null);
+              setUrl("");
+            }}
+            className="mt-6 text-sm font-bold text-al-purple hover:underline"
+          >
+            別の動画を分析する
+          </button>
         </div>
       ) : (
         <div className="mt-6">
