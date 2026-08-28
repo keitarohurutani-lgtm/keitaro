@@ -1,7 +1,8 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getReportCounts, getWeeklyActivity, formatRelativeDate } from "@/lib/report";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isAdminEmail } from "@/lib/auth";
 import LogoutButton from "@/components/LogoutButton";
 
 // 活動集計・週間アクティビティは毎回のDB最新状態を反映する必要があるため、
@@ -35,6 +36,14 @@ export default async function ReportPage() {
         </div>
         <div className="pt-1 text-right">
           <p className="font-display text-sm font-bold">{user.displayName}</p>
+          {isAdminEmail(user.email) && (
+            <Link
+              href="/admin"
+              className="mt-1 block text-xs font-bold text-al-purple hover:underline"
+            >
+              管理画面 →
+            </Link>
+          )}
           <LogoutButton className="mt-1" />
         </div>
       </div>

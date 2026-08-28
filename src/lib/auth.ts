@@ -16,3 +16,14 @@ export async function getCurrentUser() {
   if (!userId) return null;
   return prisma.user.findUnique({ where: { id: userId } });
 }
+
+// 管理者判定はDBにフラグを持たず、環境変数ADMIN_EMAILS（カンマ区切り）との
+// 突き合わせだけで行う。管理者を増やしたい場合はVercelの環境変数を編集するだけでよく、
+// DBマイグレーションや個別のフラグ更新作業が不要。
+export function isAdminEmail(email: string): boolean {
+  const list = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return list.includes(email.toLowerCase());
+}
