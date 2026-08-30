@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { Trend } from "@/generated/prisma/client";
 import { CATEGORIES } from "@/lib/data";
 import { PLAYBOOK_IDEAS } from "@/lib/playbook";
 import CategoryTag from "@/components/CategoryTag";
@@ -16,13 +17,52 @@ async function copyIdea(title: string, steps: readonly string[]) {
   }
 }
 
-export default function PlaybookClient() {
+function CurrentTrendBanner({ trend }: { trend: Trend }) {
+  return (
+    <div className="al-flyer-card mt-4 flex flex-col gap-1 rounded-xl border-2 border-al-black bg-al-gray-50 p-4">
+      <div className="flex items-center gap-2">
+        <span className="al-sticker rounded-full px-2.5 py-1 font-display text-[11px] font-bold text-al-black">
+          今のトレンド
+        </span>
+        <span className="text-[11px] font-bold text-al-gray-400">{trend.growth}</span>
+      </div>
+      <p className="font-display text-sm font-bold leading-snug">{trend.name}</p>
+      {(trend.artistName || trend.songTitle) && (
+        <p className="text-xs font-bold text-al-purple">
+          🎵 {trend.artistName ?? "アーティスト不明"}
+          {trend.songTitle ? ` - ${trend.songTitle}` : ""}
+        </p>
+      )}
+      <p className="text-xs leading-relaxed text-al-gray-500">
+        今このジャンルで伸びているのはこの投稿です。下のネタと組み合わせて、自分ならどう真似できるか考えてみましょう。
+      </p>
+      {trend.sourceUrl && (
+        <a
+          href={trend.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-1 inline-flex w-fit items-center gap-1 text-xs font-bold text-al-blue hover:underline"
+        >
+          元動画を見る →
+        </a>
+      )}
+    </div>
+  );
+}
+
+export default function PlaybookClient({
+  currentTrends,
+}: {
+  currentTrends: Record<string, Trend>;
+}) {
   const [active, setActive] = useState<"すべて" | (typeof CATEGORIES)[number]>("すべて");
 
   const visible =
     active === "すべて"
       ? PLAYBOOK_IDEAS
       : PLAYBOOK_IDEAS.filter((idea) => idea.category === active);
+
+  const activeTrend = active !== "すべて" ? currentTrends[active] : undefined;
 
   return (
     <div>
@@ -41,6 +81,8 @@ export default function PlaybookClient() {
           </button>
         ))}
       </div>
+
+      {activeTrend && <CurrentTrendBanner trend={activeTrend} />}
 
       <p className="mt-4 text-xs text-al-gray-400">{visible.length}件のネタ（タップでコピーできます）</p>
 
