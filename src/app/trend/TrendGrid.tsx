@@ -100,7 +100,19 @@ export default function TrendGrid({
                       </p>
                     )}
                     <p className="text-xs text-al-gray-500">
-                      {item.channelTitle} ・ {item.growth}
+                      {item.channelUrl ? (
+                        <a
+                          href={item.channelUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-bold text-al-gray-600 hover:underline"
+                        >
+                          {item.channelTitle}
+                        </a>
+                      ) : (
+                        item.channelTitle
+                      )}{" "}
+                      ・ {item.growth}
                     </p>
                   </div>
                   {item.sourceUrl && (

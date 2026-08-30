@@ -47,6 +47,17 @@ const TIKTOK_EXTRA_QUERIES = ["TikTok バズった 動画", "TikTok トレンド
 // 単一の曲・アーティストを扱った動画だけを候補として残すための簡易フィルター。
 const COMPILATION_TITLE_PATTERN = /メドレー|全部|何曲|クイズ|ランキング|まとめ|nonstop|medley/i;
 
+// タイトルにひらがな・カタカナ・漢字が含まれるか（日本の会員向けに参考価値が高い
+// コンテンツを優先するための簡易判定。英語圏のミーム動画等が上位に来るのを防ぐ）。
+const JAPANESE_TEXT_PATTERN = /[぀-ヿ一-鿿]/;
+
+// 日本語タイトルの候補があればそちらを優先し、皆無の場合のみ全候補にフォールバックする
+// （日本語コンテンツが本当に存在しないカテゴリーで0件になるのを避けるため）。
+function preferJapanese<T extends { title: string }>(candidates: T[]): T[] {
+  const japanese = candidates.filter((v) => JAPANESE_TEXT_PATTERN.test(v.title));
+  return japanese.length > 0 ? japanese : candidates;
+}
+
 const CATEGORY_GRADIENT: Record<(typeof TREND_CATEGORIES)[number], [string, string]> = {
   SNS: ["#0B0B0C", "#2F7DFF"],
   音源: ["#7C5CFF", "#D4FF3D"],
@@ -100,8 +111,10 @@ export async function syncTrends(prisma: PrismaClient): Promise<SyncTrendsResult
           seen.add(v.videoId);
           return true;
         });
-        videos = candidates
-          .filter((v) => v.viewCount >= TIKTOK_TREND_MIN_VIEWS)
+        const qualifying = candidates.filter((v) => v.viewCount >= TIKTOK_TREND_MIN_VIEWS);
+        // 日本の会員が参考にしやすいよう、日本語タイトルの動画があればそちらを優先する
+        // （英語圏のミーム動画などが上位に来ないようにするため）。
+        videos = preferJapanese(qualifying)
           .sort((a, b) => b.viewCount - a.viewCount)
           .slice(0, RANKING_SIZE);
         if (videos.length === 0) {
@@ -184,6 +197,12 @@ export async function syncTrends(prisma: PrismaClient): Promise<SyncTrendsResult
       }
 
       try {
+        // 今回の候補数より下位の順位が前回までのデータとして残ってしまわないよう、
+        // はみ出した順位は先に削除しておく（例：以前5件→今回1件なら2〜5位を消す）。
+        await prisma.trendRanking.deleteMany({
+          where: { category, weekOf, rank: { gt: videos.length } },
+        });
+
         for (let i = 0; i < videos.length; i++) {
           const rankVideo = videos[i];
           const rank = i + 1;
@@ -210,6 +229,7 @@ export async function syncTrends(prisma: PrismaClient): Promise<SyncTrendsResult
             update: {
               title: rankVideo.title.slice(0, 80),
               channelTitle: rankVideo.channelTitle,
+              channelUrl: rankVideo.channelUrl,
               artistName,
               songTitle,
               viewCount: rankVideo.viewCount,
@@ -225,6 +245,7 @@ export async function syncTrends(prisma: PrismaClient): Promise<SyncTrendsResult
               rank,
               title: rankVideo.title.slice(0, 80),
               channelTitle: rankVideo.channelTitle,
+              channelUrl: rankVideo.channelUrl,
               artistName,
               songTitle,
               viewCount: rankVideo.viewCount,

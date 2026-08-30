@@ -82,6 +82,7 @@ model TrendRanking {
   rank         Int // 1〜5、カテゴリー・週内の順位（1が最上位）
   title        String
   channelTitle String
+  channelUrl   String? // チャンネルページへのリンク（取得できた場合のみ）
   artistName   String? // 音源カテゴリでAIが読み取れた場合のみ設定
   songTitle    String?
   viewCount    Int

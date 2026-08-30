@@ -9,6 +9,7 @@ export interface YoutubeTrendVideo {
   title: string;
   description: string;
   channelTitle: string;
+  channelUrl: string | null;
   thumbnailUrl: string | null;
   viewCount: number;
   publishedAt: string;
@@ -25,6 +26,7 @@ interface VideoListItem {
     title?: string;
     description?: string;
     channelTitle?: string;
+    channelId?: string;
     publishedAt?: string;
     thumbnails?: { medium?: { url?: string }; high?: { url?: string } };
   };
@@ -89,6 +91,9 @@ export async function fetchTrendingVideos(
     title: item.snippet?.title ?? "",
     description: item.snippet?.description ?? "",
     channelTitle: item.snippet?.channelTitle ?? "",
+    channelUrl: item.snippet?.channelId
+      ? `https://www.youtube.com/channel/${item.snippet.channelId}`
+      : null,
     thumbnailUrl:
       item.snippet?.thumbnails?.high?.url ?? item.snippet?.thumbnails?.medium?.url ?? null,
     viewCount: Number(item.statistics?.viewCount ?? 0),

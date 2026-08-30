@@ -210,7 +210,18 @@ function PostCheckPanel() {
           </button>
         </div>
       )}
-      {error && <p className="mt-4 text-xs text-red-600">{error}</p>}
+      {error && (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <p className="text-xs text-red-600">{error}</p>
+          <button
+            onClick={runAnalysis}
+            disabled={loading}
+            className="text-xs font-bold text-al-purple hover:underline disabled:opacity-60"
+          >
+            もう一度試す
+          </button>
+        </div>
+      )}
     </div>
   );
 }
