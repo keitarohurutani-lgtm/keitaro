@@ -1,6 +1,18 @@
+"use client";
+
 import type { ReactNode } from "react";
 import type { Trend } from "@/generated/prisma/client";
 import CategoryTag from "./CategoryTag";
+import { toast } from "@/lib/toast";
+
+async function copyKeyword(keyword: string) {
+  try {
+    await navigator.clipboard.writeText(keyword);
+    toast(`「${keyword}」をコピーしました`);
+  } catch {
+    toast("コピーできませんでした", "error");
+  }
+}
 
 export default function TrendCard({
   trend,
@@ -71,16 +83,18 @@ export default function TrendCard({
         {trend.searchKeywords.length > 0 && (
           <div className="mt-1 border-t border-al-gray-100 pt-2">
             <p className="text-[11px] font-bold text-al-gray-400">
-              この検索キーワードで参考投稿を探せます
+              この検索キーワードで参考投稿を探せます（タップでコピー）
             </p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {trend.searchKeywords.map((keyword) => (
-                <span
+                <button
                   key={keyword}
-                  className="rounded-full bg-al-gray-50 px-2 py-0.5 text-[11px] font-bold text-al-gray-600"
+                  type="button"
+                  onClick={() => copyKeyword(keyword)}
+                  className="rounded-full bg-al-gray-50 px-2 py-0.5 text-[11px] font-bold text-al-gray-600 transition-colors hover:bg-al-gray-100"
                 >
                   {keyword}
-                </span>
+                </button>
               ))}
             </div>
           </div>
