@@ -151,3 +151,13 @@ src/app/{page,trend,songs,playbook,idea,analyze,report,faq,guide}/  各ページ
 ## GUIDE（使い方ガイド）について
 
 `/guide`は、ASOBI LABの各機能（TODAY/TREND/SONGS/PLAYBOOK/IDEA/ANALYZE/MY REPORT/FAQ）を1画面でまとめた使い方ガイドです（`src/app/guide/page.tsx`）。DB接続やAI呼び出しはなく、固定テキストのみの静的ページです。各カードはそのままその機能のページへのリンクになっています。文言は誰でも分かるよう平易な言葉でまとめています。
+
+## ホーム画面「今日のSNS運用ポイント」について
+
+ホーム画面のヒーロー部分は、`src/lib/daily-tips.ts`の固定コンテンツから、SNS運用の基本的な考え方を毎日1つ日替わりで表示します（`getTodaysTip`、日付を配列長で割った余りで巡回する決定的な選択。全員が同じ日は同じ内容を見ます）。AIのその場生成ではなく、実際によく知られている一般的なSNS運用の知識だけをまとめた固定リストです。個人向けの企画おすすめは、その下の「あなたへのおすすめ」セクション（PLAYBOOKベース）が引き続き担当します。
+
+## モバイル対応について
+
+- ボトムナビは8項目すべてを並べず、使用頻度の高い5つ（TODAY/TREND/PLAYBOOK/IDEA/MY REPORT）を常時表示し、残り（SONGS/FAQ/GUIDE）は「もっと」ボタンからのポップアップメニューにまとめています（`src/components/BottomNav.tsx`）。375px幅で1項目が窮屈にならないようにするための対応です。
+- 管理画面の会員一覧（`/admin`）は、横スクロールが必要な表形式をmd以上でのみ表示し、スマホでは1人ずつのカード形式に切り替えます。
+- 削除確認ボックス（`DeleteUserButton`）は固定幅をやめ、狭い画面でも枠内に収まるようにしています。

@@ -56,7 +56,7 @@ export default function DeleteUserButton({
   }
 
   return (
-    <div className="inline-flex w-72 flex-col items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-left">
+    <div className="flex w-full max-w-xs flex-col items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-left">
       <p className="text-xs leading-relaxed text-red-700">
         {displayName}さんのアカウントを完全に削除します。保存済み企画・活動履歴もすべて削除され、元に戻せません。続けるには、メールアドレス（{email}）を入力してください。
       </p>

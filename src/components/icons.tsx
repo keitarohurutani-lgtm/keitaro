@@ -95,6 +95,16 @@ export function IconGuide({ className }: IconProps) {
   );
 }
 
+export function IconMore({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...base}>
+      <circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export const navIcons: Record<string, (p: IconProps) => React.ReactElement> = {
   TODAY: IconToday,
   TREND: IconTrend,

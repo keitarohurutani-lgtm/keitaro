@@ -44,7 +44,7 @@ export default async function AdminUserDetailPage({
         ← 会員一覧に戻る
       </Link>
 
-      <div className="mt-4 flex items-start justify-between gap-4">
+      <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="font-display text-xs font-bold tracking-[0.2em] text-al-purple">
             ADMIN

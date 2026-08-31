@@ -532,7 +532,7 @@ export default function ContentProposalWizard({ persona }: { persona: Persona })
           <button
             type="button"
             onClick={goBack}
-            className="rounded-full border border-al-gray-200 px-5 py-2.5 font-display text-sm font-bold text-al-gray-600 hover:bg-al-gray-50"
+            className="shrink-0 whitespace-nowrap rounded-full border border-al-gray-200 px-5 py-2.5 font-display text-sm font-bold text-al-gray-600 hover:bg-al-gray-50"
           >
             戻る
           </button>
@@ -542,7 +542,7 @@ export default function ContentProposalWizard({ persona }: { persona: Persona })
             type="button"
             onClick={submitContentRequest}
             disabled={loadingProposals}
-            className="rounded-full bg-al-black px-6 py-2.5 font-display text-sm font-bold text-white transition-colors hover:bg-al-gray-600 disabled:opacity-60"
+            className="flex-1 rounded-full bg-al-black px-6 py-2.5 font-display text-sm font-bold text-white transition-colors hover:bg-al-gray-600 disabled:opacity-60 sm:flex-none"
           >
             {loadingProposals ? "AIが考え中…" : "AIに企画を3案提案してもらう"}
           </button>
@@ -551,7 +551,7 @@ export default function ContentProposalWizard({ persona }: { persona: Persona })
             type="button"
             onClick={goNext}
             disabled={!canGoNext}
-            className="rounded-full bg-al-black px-6 py-2.5 font-display text-sm font-bold text-white transition-colors hover:bg-al-gray-600 disabled:opacity-40"
+            className="shrink-0 whitespace-nowrap rounded-full bg-al-black px-6 py-2.5 font-display text-sm font-bold text-white transition-colors hover:bg-al-gray-600 disabled:opacity-40"
           >
             次へ
           </button>

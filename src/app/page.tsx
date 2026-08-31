@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getReportCounts } from "@/lib/report";
 import { getCurrentUserId } from "@/lib/auth";
 import { getPlaybookRecommendations } from "@/lib/recommend";
+import { getTodaysTip } from "@/lib/daily-tips";
 import TrendCard from "@/components/TrendCard";
 import CategoryTag from "@/components/CategoryTag";
 
@@ -15,16 +16,12 @@ export default async function TodayPage() {
   const userId = await getCurrentUserId();
   if (!userId) redirect("/login");
 
-  const [latestIdea, pickedTrends, counts, recommendations] = await Promise.all([
-    prisma.idea.findFirst({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      include: { trend: true },
-    }),
+  const [pickedTrends, counts, recommendations] = await Promise.all([
     prisma.trend.findMany({ take: 5, orderBy: { fetchedAt: "desc" } }),
     getReportCounts(userId),
     getPlaybookRecommendations(userId),
   ]);
+  const tip = getTodaysTip();
 
   return (
     <div>
@@ -43,59 +40,28 @@ export default async function TodayPage() {
             TODAY&apos;S ASOBI LAB
           </p>
           <h1 className="mt-3 font-display text-3xl font-bold leading-tight md:text-5xl">
-            今日のあなたにおすすめ。
+            今日のSNS運用ポイント。
           </h1>
 
           <div className="mt-8 max-w-xl space-y-4">
-            {latestIdea ? (
-              <>
-                <p className="text-base leading-relaxed text-al-gray-300 md:text-lg">
-                  {latestIdea.trend
-                    ? `最近、${latestIdea.trend.name}系の投稿が伸びています。`
-                    : "あなたの指示から企画を考えました。"}
-                </p>
-                <p className="font-display text-xl font-bold leading-snug text-white md:text-2xl">
-                  あなたのキャラクターなら、『{latestIdea.title}』企画がおすすめです。
-                </p>
+            <span className="al-sticker inline-flex rounded-full px-3 py-1 font-display text-xs font-bold text-al-black">
+              {tip.category}
+            </span>
+            <p className="font-display text-xl font-bold leading-snug text-white md:text-2xl">
+              {tip.headline}
+            </p>
+            <p className="text-base leading-relaxed text-al-gray-300 md:text-lg">{tip.body}</p>
 
-                <ul className="space-y-2 pt-2">
-                  {[
-                    `表情：${latestIdea.expression}`,
-                    `撮影場所：${latestIdea.location}`,
-                    `オチ：${latestIdea.punchline}`,
-                  ].map((tip) => (
-                    <li key={tip} className="flex items-start gap-2 text-sm text-al-gray-300">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-al-pink" />
-                      {tip}
-                    </li>
-                  ))}
-                </ul>
-
-                <Link
-                  href={`/idea#${latestIdea.id}`}
-                  className="mt-4 inline-flex items-center gap-2 rounded-full bg-al-pink px-6 py-3 font-display text-sm font-bold text-white transition-transform hover:scale-[1.02]"
-                >
-                  企画を見る
-                  <span aria-hidden>→</span>
-                </Link>
-              </>
-            ) : (
-              <>
-                <p className="text-base leading-relaxed text-al-gray-300 md:text-lg">
-                  まだAIが企画を提案していません。
-                </p>
-                <p className="font-display text-xl font-bold leading-snug text-white md:text-2xl">
-                  気になるトレンドをチェックして、あなたに合う企画を生成してみましょう。
-                </p>
-                <Link
-                  href="/trend"
-                  className="mt-4 inline-flex items-center gap-2 rounded-full bg-al-pink px-6 py-3 font-display text-sm font-bold text-white transition-transform hover:scale-[1.02]"
-                >
-                  トレンドを見る
-                  <span aria-hidden>→</span>
-                </Link>
-              </>
-            )}
+            <Link
+              href="/idea"
+              className="mt-4 inline-flex items-center gap-2 rounded-full bg-al-pink px-6 py-3 font-display text-sm font-bold text-white transition-transform hover:scale-[1.02]"
+            >
+              このポイントを意識して投稿ネタを探す
+              <span aria-hidden>→</span>
+            </Link>
+            <p className="pt-1 text-xs text-al-gray-400">
+              明日はまた違うポイントが表示されます。毎日チェックしてみましょう。
+            </p>
           </div>
         </div>
       </section>
