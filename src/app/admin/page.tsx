@@ -3,6 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, isAdminEmail } from "@/lib/auth";
 import LogoutButton from "@/components/LogoutButton";
+import DeleteUserButton from "@/components/DeleteUserButton";
 
 // 会員一覧は常に最新の登録・活動状況を反映する必要があるため、静的プリレンダリングを無効化する。
 export const dynamic = "force-dynamic";
@@ -42,7 +43,7 @@ export default async function AdminPage() {
         </div>
       </div>
 
-      <div className="mt-8 al-flyer-card overflow-hidden rounded-2xl">
+      <div className="mt-8 al-flyer-card overflow-x-auto rounded-2xl">
         <table className="w-full text-left text-sm">
           <thead className="bg-al-gray-50 text-xs text-al-gray-500">
             <tr>
@@ -51,6 +52,7 @@ export default async function AdminPage() {
               <th className="px-4 py-3 font-display font-bold">登録日</th>
               <th className="px-4 py-3 text-right font-display font-bold">保存済み企画</th>
               <th className="px-4 py-3 text-right font-display font-bold">総活動数</th>
+              <th className="px-4 py-3" />
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -64,7 +66,7 @@ export default async function AdminPage() {
                 </td>
                 <td className="px-4 py-3 text-right">{savedCountByUser.get(u.id) ?? 0}</td>
                 <td className="px-4 py-3 text-right">{u._count.activities}</td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3 text-right text-sm">
                   <Link
                     href={`/admin/users/${u.id}`}
                     className="font-bold text-al-purple hover:underline"
@@ -72,11 +74,22 @@ export default async function AdminPage() {
                     詳細 →
                   </Link>
                 </td>
+                <td className="px-4 py-3 text-right text-sm">
+                  {u.id === user.id ? (
+                    <span className="text-al-gray-300">（自分）</span>
+                  ) : (
+                    <DeleteUserButton
+                      userId={u.id}
+                      email={u.email}
+                      displayName={u.displayName}
+                    />
+                  )}
+                </td>
               </tr>
             ))}
             {users.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-al-gray-400">
+                <td colSpan={7} className="px-4 py-10 text-center text-al-gray-400">
                   まだ会員がいません。
                 </td>
               </tr>

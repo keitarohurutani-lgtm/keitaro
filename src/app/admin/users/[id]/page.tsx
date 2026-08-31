@@ -6,6 +6,7 @@ import { getReportCounts, formatRelativeDate } from "@/lib/report";
 import { PERSONA_LABEL } from "@/lib/persona";
 import type { Persona } from "@/generated/prisma/enums";
 import CategoryTag from "@/components/CategoryTag";
+import DeleteUserButton from "@/components/DeleteUserButton";
 
 // 個別会員の企画・活動は常に最新状態を反映する必要があるため、静的プリレンダリングを無効化する。
 export const dynamic = "force-dynamic";
@@ -56,6 +57,14 @@ export default async function AdminUserDetailPage({
             登録日: {targetUser.createdAt.toISOString().slice(0, 10)}
           </p>
         </div>
+        {targetUser.id !== admin.id && (
+          <DeleteUserButton
+            userId={targetUser.id}
+            email={targetUser.email}
+            displayName={targetUser.displayName}
+            redirectOnDelete
+          />
+        )}
       </div>
 
       <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
