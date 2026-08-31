@@ -54,7 +54,13 @@ npm run dev    # http://localhost:3000
 IDEAページの「AIに企画を提案してもらう」には2つのモードがあります。
 
 - **トレンドから**（従来通り）：`generateIdeaFromTrend` が、選んだトレンドとキャラクタータイプ（元気印/クール/ほんわか/毒舌気味/正統派）から企画を生成します。
-- **オリジナル指示で**：`generateIdeaFromPrompt` が、トレンドを使わずユーザー自身が自由入力した指示文（最大500文字）とキャラクタータイプだけから企画を生成します。この場合`Idea.trendId`はnull、入力した指示は`Idea.customPrompt`に保存され、一覧では「ORIGINAL」バッジと入力した指示文をそのまま表示します。
+- **オリジナル指示で**：自由記述だけに頼らず、選択式メイン＋自由記述は補足という「SNSコンテンツ提案機能」です（`src/components/ContentProposalWizard.tsx`）。
+  1. STEP1〜4（投稿するSNS／投稿目的／投稿タイプ／投稿の方向性、最大3つ）を選び、最後に任意の追加要望を自由入力
+  2. 選択内容を内部データ（`src/lib/content-proposal.ts`の`ContentRequest`）に整理し、`generateContentProposals`がAIに企画案を3つ提案させる（`POST /api/ideas/propose`、DB未保存）
+  3. カード形式で3案を比較し、「この企画で作る」を押すと`Idea`として保存される（`POST /api/ideas/propose/select`、`trendId`はnull・`platform/concept/difficulty`に3案分の情報を保存）
+  4. 選んだ企画に対して「台本を作る／詳しい構成を作る／キャプションを作る／撮影方法を見る／別案を出す」を選べる（`generateProposalFollowUp`、`POST /api/ideas/propose/followup`）。台本のみ時間帯ごとの構造化データ（セリフ・テロップ・画角）で返す
+  - ユーザープロフィール機能はまだ存在しないため、実在する「あなたのタイプ」（persona）だけを`creator_profile`として渡し、存在しない情報は推測で埋めない
+  - 従来の自由記述オンリーのデータ（`Idea.customPrompt`）はそのまま残っており、表示・互換性ともに影響なし
 
 どちらもGemini（`gemini-3.1-flash-lite`）が構造化JSONで企画タイトル・理由・POST PLAN（冒頭1秒・撮影場所・表情・構成・尺・オチ）を生成し、DBに保存します。断定口調ではなく提案口調で出力するようシステムプロンプトで指定しています。
 

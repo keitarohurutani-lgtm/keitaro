@@ -127,12 +127,16 @@ export default async function AdminUserDetailPage({
                   <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {[
                       ["冒頭1秒", idea.opening],
+                      ["企画内容", idea.concept],
                       ["撮影場所", idea.location],
                       ["表情", idea.expression],
                       ["構成", idea.structure],
                       ["尺", idea.duration],
+                      ["撮影難易度", idea.difficulty],
                       ["オチ", idea.punchline],
-                    ].map(([label, value]) => (
+                    ]
+                      .filter((row): row is [string, string] => Boolean(row[1]))
+                      .map(([label, value]) => (
                       <div key={label} className="rounded-xl bg-al-gray-50 p-3">
                         <dt className="font-display text-xs font-bold text-al-gray-400">
                           {label}

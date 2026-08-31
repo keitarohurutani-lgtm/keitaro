@@ -6,6 +6,7 @@ import type { Persona } from "@/generated/prisma/enums";
 import CategoryTag from "@/components/CategoryTag";
 import SaveIdeaButton from "@/components/SaveIdeaButton";
 import { PERSONA_LABEL } from "@/lib/persona";
+import { PLATFORMS, PLATFORM_LABEL, type Platform } from "@/lib/content-proposal";
 
 type IdeaWithTrend = Idea & { trend: Trend | null };
 
@@ -78,6 +79,11 @@ export default function IdeaList({ ideas }: { ideas: IdeaWithTrend[] }) {
                   <span className="inline-flex items-center rounded-md bg-al-purple px-2.5 py-1 font-display text-[11px] font-bold uppercase tracking-wide text-white">
                     オリジナル
                   </span>
+                  {idea.platform && (PLATFORMS as readonly string[]).includes(idea.platform) && (
+                    <span className="text-[11px] font-bold text-al-gray-400">
+                      {PLATFORM_LABEL[idea.platform as Platform]}向け
+                    </span>
+                  )}
                 </div>
                 {idea.customPrompt && (
                   <p className="mt-1.5 text-xs leading-relaxed text-al-gray-500">
@@ -113,19 +119,23 @@ export default function IdeaList({ ideas }: { ideas: IdeaWithTrend[] }) {
               <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {[
                   ["冒頭1秒", idea.opening],
+                  ["企画内容", idea.concept],
                   ["撮影場所", idea.location],
                   ["表情", idea.expression],
                   ["構成", idea.structure],
                   ["尺", idea.duration],
+                  ["撮影難易度", idea.difficulty],
                   ["オチ", idea.punchline],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-xl bg-white p-3">
-                    <dt className="font-display text-xs font-bold text-al-gray-400">
-                      {label}
-                    </dt>
-                    <dd className="mt-1 text-sm leading-relaxed">{value}</dd>
-                  </div>
-                ))}
+                ]
+                  .filter((row): row is [string, string] => Boolean(row[1]))
+                  .map(([label, value]) => (
+                    <div key={label} className="rounded-xl bg-white p-3">
+                      <dt className="font-display text-xs font-bold text-al-gray-400">
+                        {label}
+                      </dt>
+                      <dd className="mt-1 text-sm leading-relaxed">{value}</dd>
+                    </div>
+                  ))}
               </dl>
             </div>
 

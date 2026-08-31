@@ -1,6 +1,19 @@
 import { GoogleGenAI } from "@google/genai";
 import type { Persona } from "@/generated/prisma/enums";
 import { PERSONA_LABEL } from "@/lib/persona";
+import {
+  PLATFORM_LABEL,
+  INSTAGRAM_FORMAT_LABEL,
+  OBJECTIVE_LABEL,
+  CONTENT_TYPE_LABEL,
+  DIRECTION_LABEL,
+  type ContentRequest,
+  type CreatorProfile,
+  type ContentProposal,
+  type FollowUpAction,
+  type FollowUpResult,
+  type ScriptCut,
+} from "@/lib/content-proposal";
 
 // 姉妹プロジェクト（asobisystem-news-app）での動作確認により、無料枠のレート制限が
 // 「1分あたり15リクエスト」で日次カウントではないFlash-Liteが実用的と判明しているため、
@@ -549,4 +562,263 @@ export async function analyzeVideoFromUrl(videoUrl: string): Promise<VideoAnalys
         }))
       : [],
   };
+}
+
+// SNSコンテンツ提案機能（IDEAページ「オリジナル指示で」モード）用。
+// 選択式の投稿条件（content_request）とユーザーのタイプ（creator_profile、実在する
+// 情報のみ）を自然文に変換し、実際に撮影できる企画案をAIに提案させる。
+
+function buildContentRequestPrompt(
+  contentRequest: ContentRequest,
+  creatorProfile: CreatorProfile
+): string {
+  const lines: string[] = [];
+
+  lines.push(
+    creatorProfile.brandImage
+      ? `【本人のタイプ・見せたいイメージ】${creatorProfile.brandImage}`
+      : "【本人のタイプ・見せたいイメージ】情報なし。決めつけずに提案してください。"
+  );
+
+  lines.push(
+    `【投稿するSNS】${PLATFORM_LABEL[contentRequest.platform]}${
+      contentRequest.instagramFormat
+        ? `（${INSTAGRAM_FORMAT_LABEL[contentRequest.instagramFormat]}）`
+        : ""
+    }`
+  );
+  lines.push(`【今回の投稿目的】${OBJECTIVE_LABEL[contentRequest.objective]}`);
+  lines.push(
+    contentRequest.contentType === "auto"
+      ? "【投稿タイプ】指定なし（AIにおまかせ）。他の条件から最適な形式を判断してください。"
+      : `【投稿タイプ】${CONTENT_TYPE_LABEL[contentRequest.contentType]}`
+  );
+
+  const directions = contentRequest.direction.filter((d) => d !== "auto");
+  lines.push(
+    directions.length > 0
+      ? `【投稿の方向性】${directions.map((d) => DIRECTION_LABEL[d]).join("／")}`
+      : "【投稿の方向性】指定なし（AIにおまかせ）。投稿目的に合う方向性を判断してください。"
+  );
+
+  if (contentRequest.additionalRequest) {
+    lines.push(`【追加の要望（あれば参考にする程度）】${contentRequest.additionalRequest}`);
+  }
+
+  return lines.join("\n");
+}
+
+function buildProposalSchema() {
+  return {
+    type: "array",
+    items: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "企画タイトル" },
+        purpose: { type: "string", description: "この企画の狙い（投稿目的とどう結びつくか）" },
+        concept: { type: "string", description: "企画内容の具体的な説明" },
+        hook: { type: "string", description: "冒頭のフック（最初の1〜3秒で何を見せるか）" },
+        structure: { type: "string", description: "投稿構成の概要（矢印でつないだ短い流れ）" },
+        duration: {
+          type: "string",
+          description: "想定尺（例：15〜20秒。写真投稿の場合は枚数の目安）",
+        },
+        difficulty: {
+          type: "string",
+          description: "撮影難易度（例：かんたん／ふつう／少し練習が必要）",
+        },
+        reason: { type: "string", description: "このユーザーにおすすめする理由（1〜2文）" },
+      },
+      required: [
+        "title",
+        "purpose",
+        "concept",
+        "hook",
+        "structure",
+        "duration",
+        "difficulty",
+        "reason",
+      ],
+    },
+  };
+}
+
+const PROPOSAL_SYSTEM_INSTRUCTION = [
+  "あなたはSNSコンテンツ企画に特化したSNSディレクターです。",
+  "ユーザーのプロフィール情報と今回選択された投稿条件をもとに、本人が実際に撮影・投稿できるSNSコンテンツを提案してください。",
+  "ユーザーが選択していない情報を勝手に決めつけないでください。",
+  "ターゲットと投稿目的を優先してください。",
+  "本人の強みや特徴がプロフィール情報に存在する場合は積極的に活用してください。",
+  "SNS初心者でも実行できる具体的な内容にしてください。",
+  "投稿するSNS媒体に適した企画にしてください。",
+  "抽象的なアドバイスではなく、実際に撮影できる企画を提案してください。",
+  "動画の場合は冒頭1〜3秒で興味を引く設計を重視してください。",
+  "『必ずバズる』など成果を断定する表現は避けてください。",
+  "最新トレンド情報を取得できていない場合、存在しない流行・音源・ハッシュタグなどを作らないでください。",
+  "出力は日本語のみ。事実にない過去の実績や数値を創作しないでください。",
+].join("\n");
+
+export async function generateContentProposals(params: {
+  contentRequest: ContentRequest;
+  creatorProfile: CreatorProfile;
+  count?: number;
+}): Promise<ContentProposal[]> {
+  const ai = getAiClient();
+  const count = params.count ?? 3;
+
+  const systemInstruction = [
+    PROPOSAL_SYSTEM_INSTRUCTION,
+    count > 1 ? "同じような企画を並べず、それぞれ違う切り口にしてください。" : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const userPrompt = [
+    buildContentRequestPrompt(params.contentRequest, params.creatorProfile),
+    `上記の条件をもとに、投稿企画を${count}案、それぞれ違う切り口で提案してください。`,
+  ].join("\n\n");
+
+  await pace();
+  const response = await ai.models.generateContent({
+    model: MODEL,
+    contents: userPrompt,
+    config: {
+      systemInstruction,
+      thinkingConfig: { thinkingBudget: 0 },
+      maxOutputTokens: 2048,
+      responseMimeType: "application/json",
+      responseSchema: buildProposalSchema(),
+    },
+  });
+
+  const text = response.text;
+  if (!text) throw new Error("AIによる企画提案に失敗しました。");
+  const parsed = JSON.parse(text);
+  if (!Array.isArray(parsed)) throw new Error("AIによる企画提案の形式が不正でした。");
+
+  return parsed.map((item) => ({
+    title: String(item.title ?? ""),
+    purpose: String(item.purpose ?? ""),
+    concept: String(item.concept ?? ""),
+    hook: String(item.hook ?? ""),
+    structure: String(item.structure ?? ""),
+    duration: String(item.duration ?? ""),
+    difficulty: String(item.difficulty ?? ""),
+    reason: String(item.reason ?? ""),
+  }));
+}
+
+function buildScriptSchema() {
+  return {
+    type: "array",
+    items: {
+      type: "object",
+      properties: {
+        timeRange: { type: "string", description: "時間帯（例：0〜3秒）" },
+        dialogue: { type: "string", description: "セリフ・話す内容" },
+        telop: { type: "string", description: "画面に出すテロップ文言" },
+        camera: { type: "string", description: "画角・カメラの動き" },
+      },
+      required: ["timeRange", "dialogue", "telop", "camera"],
+    },
+  };
+}
+
+const FOLLOWUP_TEXT_INSTRUCTION: Record<Exclude<FollowUpAction, "script">, string> = {
+  structure: "この企画の詳しい構成案を、場面ごとに区切って具体的に書いてください。",
+  caption:
+    "この企画に合う投稿キャプション（本文）を書いてください。絵文字やハッシュタグを使う場合は一般的なものに留め、存在しない流行のハッシュタグは作らないでください。",
+  shooting: "この企画をスマホ1台で撮影する方法・コツを具体的に書いてください。",
+};
+
+// 選択した企画（proposal）をもとに、台本／詳しい構成／キャプション／撮影方法のいずれかを
+// 生成する。台本のみ、時間帯ごとに区切った構造化データ（cuts）で返す。
+export async function generateProposalFollowUp(params: {
+  proposal: ContentProposal;
+  actionType: FollowUpAction;
+  contentRequest: ContentRequest;
+  creatorProfile: CreatorProfile;
+}): Promise<FollowUpResult> {
+  const ai = getAiClient();
+
+  const proposalSummary = [
+    `【企画タイトル】${params.proposal.title}`,
+    `【企画内容】${params.proposal.concept}`,
+    `【冒頭のフック】${params.proposal.hook}`,
+    `【構成の概要】${params.proposal.structure}`,
+    `【想定尺】${params.proposal.duration}`,
+  ].join("\n");
+  const contextPrompt = buildContentRequestPrompt(params.contentRequest, params.creatorProfile);
+
+  if (params.actionType === "script") {
+    const systemInstruction = [
+      "あなたはSNSコンテンツ企画に特化したSNSディレクターです。",
+      "与えられた企画をもとに、実際に撮影できるレベルまで具体化した台本を作ってください。",
+      "時間帯ごとに区切り、それぞれセリフ・テロップ・画角を具体的に書いてください。",
+      "冒頭1〜3秒は特に興味を引く設計を重視してください。",
+      "『必ずバズる』など成果を断定する表現は避けてください。",
+      "出力は日本語のみ。存在しない実績や数値を創作しないでください。",
+    ].join("\n");
+    const userPrompt = [
+      contextPrompt,
+      proposalSummary,
+      "この企画の台本を、時間帯ごとに区切って作ってください。",
+    ].join("\n\n");
+
+    await pace();
+    const response = await ai.models.generateContent({
+      model: MODEL,
+      contents: userPrompt,
+      config: {
+        systemInstruction,
+        thinkingConfig: { thinkingBudget: 0 },
+        maxOutputTokens: 1536,
+        responseMimeType: "application/json",
+        responseSchema: buildScriptSchema(),
+      },
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("AIによる台本生成に失敗しました。");
+    const parsed = JSON.parse(text);
+    const cuts: ScriptCut[] = Array.isArray(parsed)
+      ? parsed.map(
+          (c: { timeRange?: unknown; dialogue?: unknown; telop?: unknown; camera?: unknown }) => ({
+            timeRange: String(c.timeRange ?? ""),
+            dialogue: String(c.dialogue ?? ""),
+            telop: String(c.telop ?? ""),
+            camera: String(c.camera ?? ""),
+          })
+        )
+      : [];
+    return { actionType: "script", cuts };
+  }
+
+  const systemInstruction = [
+    "あなたはSNSコンテンツ企画に特化したSNSディレクターです。",
+    "与えられた企画をもとに、ユーザーが求めている内容を具体的に作成してください。",
+    "抽象的なアドバイスではなく、実際にそのまま使える内容にしてください。",
+    "前置き（『作成しました』等）や、依頼されていない補足アドバイス・見出し・区切り線を付けず、",
+    "成果物そのものだけを出力してください。",
+    "『必ずバズる』など成果を断定する表現は避けてください。",
+    "出力は日本語のみ。存在しない実績や数値、流行を創作しないでください。",
+  ].join("\n");
+  const userPrompt = [
+    contextPrompt,
+    proposalSummary,
+    FOLLOWUP_TEXT_INSTRUCTION[params.actionType],
+  ].join("\n\n");
+
+  await pace();
+  const response = await ai.models.generateContent({
+    model: MODEL,
+    contents: userPrompt,
+    config: {
+      systemInstruction,
+      thinkingConfig: { thinkingBudget: 0 },
+      maxOutputTokens: 1024,
+    },
+  });
+
+  return { actionType: params.actionType, text: (response.text ?? "").trim() };
 }

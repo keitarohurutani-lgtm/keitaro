@@ -145,15 +145,18 @@ model Idea {
   trendId       String? // トレンドを使わず、ユーザー自身の指示だけで生成した企画はnull
   trend         Trend?   @relation(fields: [trendId], references: [id], onDelete: Cascade)
   customPrompt  String? // trendIdがnullの場合、生成のもとになったユーザー自身の指示文
+  platform      String? // SNSコンテンツ提案フローで選んだ投稿先（tiktok/instagram/x/youtube）
+  concept       String? // SNSコンテンツ提案フローの企画内容（3案生成時のconcept）
+  difficulty    String? // SNSコンテンツ提案フローの撮影難易度
   persona       Persona?
   title         String
   reason        String
   opening       String
-  location      String
-  expression    String
+  location      String?
+  expression    String?
   structure     String
   duration      String
-  punchline     String
+  punchline     String?
   saved         Boolean  @default(false)
   generatedByAI Boolean  @default(false)
   createdAt     DateTime @default(now())
