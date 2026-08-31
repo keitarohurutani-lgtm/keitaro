@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { Trend } from "@/generated/prisma/client";
-import { CATEGORIES } from "@/lib/data";
+import { CATEGORIES, isCategory } from "@/lib/data";
 import { PLAYBOOK_IDEAS } from "@/lib/playbook";
 import CategoryTag from "@/components/CategoryTag";
 import { toast } from "@/lib/toast";
@@ -57,7 +58,11 @@ export default function PlaybookClient({
   currentTrends: Record<string, Trend>;
   initialFavoriteIds: string[];
 }) {
-  const [active, setActive] = useState<"すべて" | (typeof CATEGORIES)[number]>("すべて");
+  const searchParams = useSearchParams();
+  const categoryParam = searchParams.get("category");
+  const initialActive = categoryParam && isCategory(categoryParam) ? categoryParam : "すべて";
+
+  const [active, setActive] = useState<"すべて" | (typeof CATEGORIES)[number]>(initialActive);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set(initialFavoriteIds));
   const [favoritesOnly, setFavoritesOnly] = useState(false);
 

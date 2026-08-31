@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getReportCounts } from "@/lib/report";
 import { getCurrentUserId } from "@/lib/auth";
+import { getPlaybookRecommendations } from "@/lib/recommend";
 import TrendCard from "@/components/TrendCard";
+import CategoryTag from "@/components/CategoryTag";
 
 // このページはDBの最新状態（企画・トレンド・活動件数）を毎回反映する必要があるため、
 // ビルド時の静的プリレンダリングを無効化する。
@@ -13,7 +15,7 @@ export default async function TodayPage() {
   const userId = await getCurrentUserId();
   if (!userId) redirect("/login");
 
-  const [latestIdea, pickedTrends, counts] = await Promise.all([
+  const [latestIdea, pickedTrends, counts, recommendations] = await Promise.all([
     prisma.idea.findFirst({
       where: { userId },
       orderBy: { createdAt: "desc" },
@@ -21,6 +23,7 @@ export default async function TodayPage() {
     }),
     prisma.trend.findMany({ take: 5, orderBy: { fetchedAt: "desc" } }),
     getReportCounts(userId),
+    getPlaybookRecommendations(userId),
   ]);
 
   return (
@@ -147,6 +150,47 @@ export default async function TodayPage() {
         </div>
       </section>
 
+      {/* RECOMMENDED PLAYBOOK */}
+      <section className="px-6 py-10 md:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-4 flex items-end justify-between">
+            <div>
+              <h2 className="font-display text-2xl font-bold">あなたへのおすすめ</h2>
+              <p className="text-sm text-al-gray-500">
+                {recommendations.length > 0 && recommendations[0].reason === "今日のピックアップ"
+                  ? "使うほど、あなた向けのおすすめになっていきます"
+                  : "これまでの活動から、今日のネタをピックアップしました"}
+              </p>
+            </div>
+            <Link href="/playbook" className="text-sm font-bold text-al-purple hover:underline">
+              ネタ集を見る →
+            </Link>
+          </div>
+          {recommendations.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {recommendations.map(({ idea, reason }) => (
+                <Link
+                  key={idea.id}
+                  href={`/playbook?category=${encodeURIComponent(idea.category)}`}
+                  className="al-flyer-card flex flex-col gap-2 rounded-xl bg-white p-4 transition-transform hover:-translate-y-0.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <CategoryTag category={idea.category} />
+                  </div>
+                  <h3 className="font-display text-base font-bold leading-snug">{idea.title}</h3>
+                  <p className="text-sm leading-relaxed text-al-gray-600">{idea.hook}</p>
+                  <p className="mt-auto pt-2 text-[11px] font-bold text-al-gray-400">{reason}</p>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-al-gray-200 p-6 text-sm text-al-gray-400">
+              ネタ集はまだ準備中です。
+            </p>
+          )}
+        </div>
+      </section>
+
       {/* QUICK ACTIONS */}
       <section className="bg-al-gray-50 px-6 py-10 md:px-8">
         <div className="mx-auto max-w-6xl">
@@ -161,20 +205,20 @@ export default async function TodayPage() {
               <p className="mt-1 text-sm text-purple-100">あなたに合う企画を見つける</p>
             </Link>
             <Link
-              href="/analyze?tab=check"
+              href="/playbook"
+              className="rounded-2xl border-2 border-al-black bg-al-lime p-5 text-al-black transition-transform hover:scale-[1.01]"
+            >
+              <p className="font-display text-xs font-bold tracking-widest">PLAYBOOK</p>
+              <p className="mt-2 font-display text-lg font-bold">ネタ集から探す</p>
+              <p className="mt-1 text-sm text-al-gray-700">真似できる投稿の型を見る</p>
+            </Link>
+            <Link
+              href="/analyze"
               className="rounded-2xl border-2 border-al-black bg-al-blue p-5 text-white transition-transform hover:scale-[1.01]"
             >
               <p className="font-display text-xs font-bold tracking-widest">POST CHECK</p>
               <p className="mt-2 font-display text-lg font-bold">動画をチェック</p>
               <p className="mt-1 text-sm text-blue-100">あなたの投稿をAIで簡易分析</p>
-            </Link>
-            <Link
-              href="/analyze?tab=benchmark"
-              className="rounded-2xl border-2 border-al-lime bg-al-black p-5 text-white transition-transform hover:scale-[1.01]"
-            >
-              <p className="font-display text-xs font-bold tracking-widest">BENCHMARK</p>
-              <p className="mt-2 font-display text-lg font-bold">伸びている投稿と比べる</p>
-              <p className="mt-1 text-sm text-al-gray-300">違いを見つけて次の一歩へ</p>
             </Link>
           </div>
         </div>

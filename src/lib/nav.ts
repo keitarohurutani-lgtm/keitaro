@@ -13,7 +13,6 @@ export const desktopNav: NavItem[] = [
   { href: "/songs", label: "SONGS", sub: "音源ランキング" },
   { href: "/playbook", label: "PLAYBOOK", sub: "ネタ集" },
   { href: "/idea", label: "IDEA", sub: "企画のヒント" },
-  { href: "/analyze", label: "ANALYZE", sub: "動画をチェック" },
   { href: "/report", label: "MY REPORT", sub: "活動を振り返る" },
   { href: "/faq", label: "FAQ", sub: "よくある質問" },
 ];
@@ -24,7 +23,6 @@ export const mobileNav: NavItem[] = [
   { href: "/songs", label: "SONGS", sub: "音源" },
   { href: "/playbook", label: "PLAYBOOK", sub: "ネタ集" },
   { href: "/idea", label: "IDEA", sub: "企画" },
-  { href: "/analyze", label: "ANALYZE", sub: "分析" },
   { href: "/report", label: "MY", sub: "マイ" },
   { href: "/faq", label: "FAQ", sub: "質問" },
 ];
