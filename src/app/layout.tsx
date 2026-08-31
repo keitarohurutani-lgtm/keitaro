@@ -6,7 +6,7 @@ import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import MainContent from "@/components/MainContent";
 import ToastProvider from "@/components/ToastProvider";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isAdminEmail } from "@/lib/auth";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -36,7 +36,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-white text-al-black">
         <Suspense fallback={<div className="hidden h-[73px] border-b border-al-gray-200 md:block" />}>
-          <Header user={user ? { displayName: user.displayName } : null} />
+          <Header
+            user={
+              user
+                ? { displayName: user.displayName, isAdmin: isAdminEmail(user.email) }
+                : null
+            }
+          />
         </Suspense>
         <MainContent>{children}</MainContent>
         <BottomNav />

@@ -6,7 +6,11 @@ import { desktopNav, AUTH_PATHS } from "@/lib/nav";
 import Logo from "./Logo";
 import LogoutButton from "./LogoutButton";
 
-export default function Header({ user }: { user: { displayName: string } | null }) {
+export default function Header({
+  user,
+}: {
+  user: { displayName: string; isAdmin: boolean } | null;
+}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -51,7 +55,17 @@ export default function Header({ user }: { user: { displayName: string } | null 
         </nav>
         {user && (
           <div className="flex items-center gap-3 pl-4">
-            <span className="font-display text-sm font-bold">{user.displayName}</span>
+            {user.isAdmin ? (
+              <Link
+                href="/admin"
+                title="管理画面へ"
+                className="font-display text-sm font-bold hover:underline"
+              >
+                {user.displayName}
+              </Link>
+            ) : (
+              <span className="font-display text-sm font-bold">{user.displayName}</span>
+            )}
             <LogoutButton />
           </div>
         )}
