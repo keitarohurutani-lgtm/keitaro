@@ -96,24 +96,28 @@ model TrendRanking {
   @@index([category, weekOf])
 }
 
-// 音源トレンドの週間ランキング（最大50件）。Trend/TrendRankingとは独立した専用テーブル。
-// 曲名・アーティスト名・YouTubeリンク（MVまたは音源）・主な使用用途（踊ってみた／ネタ系／Vlog系等）
-// を実データ（YouTube Data API）から構成する。TREND側の「音源」カテゴリーは廃止し、
-// こちらの専用ランキングに一本化した。
+// 音源トレンドの週間ランキング。Trend/TrendRankingとは独立した専用テーブル。
+// 曲名・アーティスト名・YouTubeリンク（MVまたは音源）・主な使用用途（踊ってみた／ネタ系／
+// Vlog系／その他）を実データ（YouTube Data API）から構成する。TREND側の「音源」カテゴリーは
+// 廃止し、こちらの専用ランキングに一本化した。
+// 用途ごとに独立したランキング（各最大20件）として保存する（rankは用途内での週内順位）。
 model SongRanking {
   id           String   @id @default(uuid())
   weekOf       DateTime // 集計対象週の開始日（月曜0時, UTC基準で丸めた値）
-  rank         Int // 1〜50、週内の順位（1が最上位）
+  usageType    String // 主な使用用途（踊ってみた／ネタ系／Vlog系／その他）
+  rank         Int // 1〜20、用途内・週内の順位（1が最上位）
   songTitle    String
   artistName   String
-  youtubeUrl   String // MVまたは音源のYouTubeリンク
-  usageType    String // 主な使用用途（例: 踊ってみた／ネタ系／Vlog系／その他）
+  youtubeUrl   String // MVまたは音源のYouTubeリンク（複数候補中、最も再生数が多かった動画）
   thumbnailUrl String?
-  viewCount    Int
+  viewCount    Int // 上記代表動画の再生数（参考値）
+  usageCount   Int      @default(1) // この同期で検索・分析した動画のうち、同じ曲だと判定された件数
+  // （TikTok本体の「使用数」ではなく、あくまで今回検索して見つかった範囲内での出現数。
+  // TikTok公式の使用数APIは一般開発者に提供されていないため代用している）
   growth       String // 表示用（例: "12.3万回再生"）
   fetchedAt    DateTime @default(now())
 
-  @@unique([weekOf, rank])
+  @@unique([weekOf, usageType, rank])
   @@index([weekOf])
 }
 

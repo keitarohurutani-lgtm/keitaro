@@ -1,7 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import type { Persona } from "@/generated/prisma/enums";
 import { PERSONA_LABEL } from "@/lib/persona";
-import { SONG_USAGE_TYPES, type SongUsageType } from "@/lib/data";
 
 // 姉妹プロジェクト（asobisystem-news-app）での動作確認により、無料枠のレート制限が
 // 「1分あたり15リクエスト」で日次カウントではないFlash-Liteが実用的と判明しているため、
@@ -296,57 +295,56 @@ export async function summarizeYoutubeTrend(params: {
   };
 }
 
-export interface SongTrendInfo {
+export interface SongBatchItem {
+  id: string;
   artistName: string | null;
   songTitle: string | null;
-  usageType: SongUsageType | null;
 }
 
-function buildSongTrendSchema() {
+function buildSongBatchSchema() {
   return {
-    type: "object",
-    properties: {
-      artistName: {
-        type: "string",
-        description: "動画タイトル・概要・チャンネル名から読み取れる歌手/アーティスト名。読み取れない場合は空文字。",
+    type: "array",
+    items: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "入力の【id】と全く同じ文字列をそのまま返す。" },
+        artistName: {
+          type: "string",
+          description: "動画タイトル・概要・チャンネル名から読み取れる歌手/アーティスト名。読み取れない場合は空文字。",
+        },
+        songTitle: {
+          type: "string",
+          description: "動画タイトル・概要から読み取れる曲名。読み取れない場合は空文字。",
+        },
       },
-      songTitle: {
-        type: "string",
-        description: "動画タイトル・概要から読み取れる曲名。読み取れない場合は空文字。",
-      },
-      usageType: {
-        type: "string",
-        enum: [...SONG_USAGE_TYPES],
-        description:
-          "この曲が主にどんな投稿で使われそうか、動画タイトル・概要・チャンネル名から判断して1つ選ぶ。ダンス動画なら「踊ってみた」、コント・あるある等のコメディ動画なら「ネタ系」、日常を映すVlog風の動画なら「Vlog系」、判断がつかなければ「その他」。",
-      },
+      required: ["id", "artistName", "songTitle"],
     },
-    required: ["artistName", "songTitle", "usageType"],
   };
 }
 
-// 音源ランキング（/songs）用。動画タイトル・概要・チャンネル名から、歌手名・曲名・
-// 主な使用用途（踊ってみた／ネタ系／Vlog系／その他）を読み取れる範囲でまとめて抽出する。
-// 書かれていない情報は創作せず空文字/nullにする。
-export async function classifySongTrend(params: {
-  videoTitle: string;
-  videoDescription: string;
-  channelTitle: string;
-}): Promise<SongTrendInfo> {
+// 音源ランキング（/songs）用。複数動画のタイトル・概要・チャンネル名から、歌手名・曲名を
+// まとめて1回のAPI呼び出しで抽出する（1件ずつ呼ぶとレート制限で件数を稼げないため）。
+// 書かれていない情報は創作せず空文字/nullにする。主な使用用途は検索クエリの切り口
+// （どんなお題で見つけた動画か）で決めるため、ここでは扱わない（src/lib/song-sync.ts参照）。
+export async function extractSongInfoBatch(
+  candidates: { id: string; videoTitle: string; videoDescription: string; channelTitle: string }[]
+): Promise<SongBatchItem[]> {
+  if (candidates.length === 0) return [];
   const ai = getAiClient();
 
   const systemInstruction = [
-    "あなたは音源トレンド分析AIです。動画タイトル・概要・チャンネル名から、歌手/アーティスト名と曲名を",
-    "読み取れる範囲で抽出してください。書かれていない情報を創作しないでください。",
-    "読み取れない場合は空文字にしてください。",
-    "あわせて、この曲が主にどんな投稿で使われそうかを選択肢から1つ選んでください。",
+    "あなたは音源トレンド分析AIです。複数の動画それぞれについて、タイトル・概要・チャンネル名から",
+    "歌手/アーティスト名と曲名を読み取れる範囲で抽出してください。書かれていない情報を",
+    "創作しないでください。読み取れない場合はそれぞれ空文字にしてください。",
+    "各動画のidは入力の【id】と完全に同じ文字列で返してください。入力と同じ順番・同じ件数で返してください。",
   ].join("\n");
 
-  const userPrompt = [
-    `【動画タイトル】${params.videoTitle}`,
-    `【動画概要】${params.videoDescription.slice(0, 300)}`,
-    `【チャンネル名】${params.channelTitle}`,
-  ].join("\n");
+  const userPrompt = candidates
+    .map(
+      (c) =>
+        `【id】${c.id}\n【動画タイトル】${c.videoTitle}\n【動画概要】${c.videoDescription.slice(0, 200)}\n【チャンネル名】${c.channelTitle}`
+    )
+    .join("\n---\n");
 
   await pace();
   const response = await ai.models.generateContent({
@@ -355,24 +353,22 @@ export async function classifySongTrend(params: {
     config: {
       systemInstruction,
       thinkingConfig: { thinkingBudget: 0 },
-      maxOutputTokens: 160,
+      maxOutputTokens: 2048,
       responseMimeType: "application/json",
-      responseSchema: buildSongTrendSchema(),
+      responseSchema: buildSongBatchSchema(),
     },
   });
 
   const text = response.text;
-  if (!text) return { artistName: null, songTitle: null, usageType: null };
+  if (!text) return [];
   const parsed = JSON.parse(text);
-  const usageType = (SONG_USAGE_TYPES as readonly string[]).includes(parsed.usageType)
-    ? (parsed.usageType as SongUsageType)
-    : null;
+  if (!Array.isArray(parsed)) return [];
 
-  return {
-    artistName: parsed.artistName ? String(parsed.artistName) : null,
-    songTitle: parsed.songTitle ? String(parsed.songTitle) : null,
-    usageType,
-  };
+  return parsed.map((item) => ({
+    id: String(item.id ?? ""),
+    artistName: item.artistName ? String(item.artistName) : null,
+    songTitle: item.songTitle ? String(item.songTitle) : null,
+  }));
 }
 
 // YouTubeの動画IDを取り出す（サムネイル表示用）。取り出せない場合はnull。
