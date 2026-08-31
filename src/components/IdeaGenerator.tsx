@@ -18,7 +18,9 @@ export default function IdeaGenerator({
   initialTrendId?: string;
 }) {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("trend");
+  // 初めての人でも迷わないよう、質問に答えるだけの「条件を選んで作る」を初期表示にする
+  // （トレンド一覧をいきなり見せるより、次に何をすればいいか分かりやすいため）。
+  const [mode, setMode] = useState<Mode>("original");
   const [trendId, setTrendId] = useState(initialTrendId ?? trends[0]?.id ?? "");
   const [persona, setPersona] = usePersonaPreference();
   const [loading, setLoading] = useState(false);
@@ -56,30 +58,39 @@ export default function IdeaGenerator({
         NEW IDEA
       </p>
       <h2 className="mt-1 font-display text-lg font-bold">新しい企画を提案してもらう</h2>
-      <p className="mt-1 text-sm text-al-gray-500">
-        {mode === "trend"
-          ? "トレンドとあなたのタイプを選ぶと、AIが投稿企画を1つ提案します。"
-          : "投稿するSNS・目的・タイプ・方向性を選ぶと、AIがあなたに合ったコンテンツ案を3つ提案します。"}
-      </p>
+      <p className="mt-1 text-sm text-al-gray-500">2つの作り方から選べます。</p>
 
-      <div className="mt-4 inline-flex rounded-full border border-al-gray-200 p-1">
-        <button
-          type="button"
-          onClick={() => setMode("trend")}
-          className={`rounded-full px-4 py-1.5 font-display text-xs font-bold transition-colors ${
-            mode === "trend" ? "bg-al-black text-white" : "text-al-gray-500"
-          }`}
-        >
-          トレンドから
-        </button>
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <button
           type="button"
           onClick={() => setMode("original")}
-          className={`rounded-full px-4 py-1.5 font-display text-xs font-bold transition-colors ${
-            mode === "original" ? "bg-al-black text-white" : "text-al-gray-500"
+          className={`relative rounded-2xl border-2 p-4 text-left transition-colors ${
+            mode === "original"
+              ? "border-al-black bg-al-black text-white"
+              : "border-al-gray-200 hover:border-al-gray-400"
           }`}
         >
-          オリジナル指示で
+          <span className="al-sticker absolute -top-2.5 right-3 rounded-full px-2 py-0.5 font-display text-[10px] font-bold text-al-black">
+            初めての方はこちら
+          </span>
+          <p className="font-display text-sm font-bold">📝 条件を選んで作る</p>
+          <p className={`mt-1 text-xs leading-relaxed ${mode === "original" ? "text-al-gray-300" : "text-al-gray-500"}`}>
+            かんたんな質問に答えるだけで、企画案を3つ考えてもらえます。
+          </p>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("trend")}
+          className={`rounded-2xl border-2 p-4 text-left transition-colors ${
+            mode === "trend"
+              ? "border-al-black bg-al-black text-white"
+              : "border-al-gray-200 hover:border-al-gray-400"
+          }`}
+        >
+          <p className="font-display text-sm font-bold">🔥 トレンドから選ぶ</p>
+          <p className={`mt-1 text-xs leading-relaxed ${mode === "trend" ? "text-al-gray-300" : "text-al-gray-500"}`}>
+            今伸びているネタの中から、気になるものを選んで企画にします。
+          </p>
         </button>
       </div>
 
@@ -87,6 +98,9 @@ export default function IdeaGenerator({
         <label className="mb-1.5 block font-display text-xs font-bold text-al-gray-500">
           あなたのタイプ
         </label>
+        <p className="mb-1.5 text-xs text-al-gray-400">
+          自分のキャラクターに近いものを選んでください。企画の雰囲気に反映されます。
+        </p>
         <div className="flex flex-wrap gap-2">
           {PERSONA_OPTIONS.map((option) => (
             <button
@@ -117,6 +131,9 @@ export default function IdeaGenerator({
               <label className="mb-1.5 block font-display text-xs font-bold text-al-gray-500">
                 トレンド
               </label>
+              <p className="mb-1.5 text-xs text-al-gray-400">
+                気になるトレンドを1つ選んでください。
+              </p>
               <select
                 value={trendId}
                 onChange={(e) => setTrendId(e.target.value)}

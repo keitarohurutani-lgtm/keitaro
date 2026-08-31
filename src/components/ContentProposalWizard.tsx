@@ -363,6 +363,11 @@ export default function ContentProposalWizard({ persona }: { persona: Persona })
   // ===== ステップ入力 =====
   return (
     <div className="mt-4">
+      {stepIndex === 0 && (
+        <p className="mb-3 rounded-lg bg-al-gray-50 px-3 py-2 text-xs text-al-gray-500">
+          5つの質問にタップで答えるだけです。あとから戻って選び直すこともできます。
+        </p>
+      )}
       <div className="flex items-center gap-2 text-[11px] text-al-gray-400">
         {STEPS.map((s, i) => (
           <span

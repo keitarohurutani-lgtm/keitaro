@@ -136,8 +136,9 @@ export default function GuidePage() {
           return (
             <Link
               key={item.key}
+              id={item.key.toLowerCase().replace(/\s+/g, "-")}
               href={item.href}
-              className="al-flyer-card block rounded-2xl p-5 transition-transform hover:-translate-y-0.5"
+              className="al-flyer-card block scroll-mt-24 rounded-2xl p-5 transition-transform hover:-translate-y-0.5"
             >
               <div className="flex items-start gap-3">
                 {Icon && (

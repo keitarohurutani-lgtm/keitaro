@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import IdeaGenerator from "@/components/IdeaGenerator";
 import IdeaList from "./IdeaList";
@@ -30,8 +31,14 @@ export default async function IdeaPage({
         あなたに合う投稿ネタを見つける
       </h1>
       <p className="mt-2 max-w-xl text-sm text-al-gray-500">
-        トレンドをもとに、AIがあなたのキャラクターに合いそうな企画を提案します。正解ではなく候補として、気になるものから試してみましょう。
+        いくつかの質問に答えるだけで、AIが投稿企画を考えてくれます。正解ではなく候補として、気になるものから試してみましょう。
       </p>
+      <Link
+        href="/guide#idea"
+        className="mt-1 inline-block text-xs font-bold text-al-purple hover:underline"
+      >
+        使い方を見る →
+      </Link>
 
       <div className="mt-8">
         <IdeaGenerator trends={trends} initialTrendId={trendId} />
