@@ -56,6 +56,16 @@ export function IconReport({ className }: IconProps) {
   );
 }
 
+export function IconSongs({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...base}>
+      <path d="M9 18V5l11-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="17" cy="16" r="3" />
+    </svg>
+  );
+}
+
 export function IconPlaybook({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" className={className} {...base}>
@@ -79,6 +89,7 @@ export function IconFaq({ className }: IconProps) {
 export const navIcons: Record<string, (p: IconProps) => React.ReactElement> = {
   TODAY: IconToday,
   TREND: IconTrend,
+  SONGS: IconSongs,
   PLAYBOOK: IconPlaybook,
   IDEA: IconIdea,
   ANALYZE: IconAnalyze,

@@ -10,6 +10,7 @@ export const AUTH_PATHS = new Set(["/login", "/register"]);
 export const desktopNav: NavItem[] = [
   { href: "/", label: "TODAY", sub: "今日のアクション" },
   { href: "/trend", label: "TREND", sub: "トレンド" },
+  { href: "/songs", label: "SONGS", sub: "音源ランキング" },
   { href: "/playbook", label: "PLAYBOOK", sub: "ネタ集" },
   { href: "/idea", label: "IDEA", sub: "企画のヒント" },
   { href: "/analyze", label: "ANALYZE", sub: "動画をチェック" },
@@ -20,6 +21,7 @@ export const desktopNav: NavItem[] = [
 export const mobileNav: NavItem[] = [
   { href: "/", label: "TODAY", sub: "今日" },
   { href: "/trend", label: "TREND", sub: "トレンド" },
+  { href: "/songs", label: "SONGS", sub: "音源" },
   { href: "/playbook", label: "PLAYBOOK", sub: "ネタ集" },
   { href: "/idea", label: "IDEA", sub: "企画" },
   { href: "/analyze", label: "ANALYZE", sub: "分析" },

@@ -2,27 +2,26 @@
 // npm run sync-trends（手動CLI）と /api/cron/sync-trends（Vercel Cron）の両方から呼ばれる。
 //
 // YouTube Data API から実際に再生数が伸びている動画を取得し、Geminiでカテゴリー分け・
-// 注目理由・使い方の解説文（音源の場合は歌手名・曲名も）を生成してTrendテーブルに反映する
-// （source=YOUTUBE）。TikTok/Instagramは公式のトレンド発見APIが一般開発者に提供されていない
-// ため対象外。詳細は src/lib/sources/tiktok.ts, src/lib/sources/instagram.ts のコメントを参照。
+// 注目理由・使い方の解説文を生成してTrendテーブルに反映する（source=YOUTUBE）。
+// TikTok/Instagramは公式のトレンド発見APIが一般開発者に提供されていないため対象外。
+// 詳細は src/lib/sources/tiktok.ts, src/lib/sources/instagram.ts のコメントを参照。
+//
+// 「音源」は専用の週間ランキング（曲名・アーティスト名・主な使用用途）として
+// src/lib/song-sync.ts に分離した。このファイルのTREND_CATEGORIESには含まれない。
 //
 // TikTokカテゴリーのみ、「1週間以内投稿・10万回再生以上」というトレンド判定の定量条件を
 // 満たした動画だけをトレンド扱いにする（下記TIKTOK_TREND_*参照）。該当なしになりやすいため
 // 複数クエリ（TIKTOK_EXTRA_QUERIES）で候補を集めてから閾値判定する。ただし再生数自体は
 // TikTok本体の数値ではなく、YouTube上でTikTok関連コンテンツを検索した際の実再生数を
 // 代用している点に注意（TrendCard上は引き続きsource=YOUTUBEとして正直に表示される）。
-//
-// 音源カテゴリーは「メドレー」「何曲歌える」等の複数曲まとめコンテンツを除外し、
-// 単一の曲・アーティストを扱った動画を優先する（COMPILATION_TITLE_PATTERN参照）。
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { fetchTrendingVideos, formatViewCount } from "@/lib/sources/youtube";
-import { summarizeYoutubeTrend, extractSongInfo, analyzeVideoFromUrl } from "@/lib/ai";
+import { summarizeYoutubeTrend, analyzeVideoFromUrl } from "@/lib/ai";
 import { getWeekStart } from "@/lib/week";
 
 export const TREND_CATEGORIES = [
   "SNS",
-  "音源",
   "ファッション",
   "メイク",
   "企画",
@@ -32,7 +31,6 @@ export const TREND_CATEGORIES = [
 
 const CATEGORY_QUERY: Record<(typeof TREND_CATEGORIES)[number], string> = {
   SNS: "SNS 投稿 バズる コツ",
-  音源: "TikTok 新曲 ダンス 振り付け",
   ファッション: "コーデ 配色 ファッション",
   メイク: "メイク 時短 やり方",
   企画: "TikTok 企画 撮り方",
@@ -42,10 +40,6 @@ const CATEGORY_QUERY: Record<(typeof TREND_CATEGORIES)[number], string> = {
 
 // TikTokカテゴリーは1クエリだと該当なしになりやすいため、複数の切り口で検索して候補を集める。
 const TIKTOK_EXTRA_QUERIES = ["TikTok バズった 動画", "TikTok トレンド 企画"];
-
-// 音源カテゴリーで「メドレー」「クイズ」等の複数曲まとめコンテンツを弾き、
-// 単一の曲・アーティストを扱った動画だけを候補として残すための簡易フィルター。
-const COMPILATION_TITLE_PATTERN = /メドレー|全部|何曲|クイズ|ランキング|まとめ|nonstop|medley/i;
 
 // タイトルにひらがな・カタカナ・漢字が含まれるか（日本の会員向けに参考価値が高い
 // コンテンツを優先するための簡易判定。英語圏のミーム動画等が上位に来るのを防ぐ）。
@@ -60,7 +54,6 @@ function preferJapanese<T extends { title: string }>(candidates: T[]): T[] {
 
 const CATEGORY_GRADIENT: Record<(typeof TREND_CATEGORIES)[number], [string, string]> = {
   SNS: ["#0B0B0C", "#2F7DFF"],
-  音源: ["#7C5CFF", "#D4FF3D"],
   ファッション: ["#0B0B0C", "#FF2E8B"],
   メイク: ["#FF2E8B", "#0B0B0C"],
   企画: ["#0B0B0C", "#7C5CFF"],
@@ -124,14 +117,6 @@ export async function syncTrends(prisma: PrismaClient): Promise<SyncTrendsResult
           );
           continue;
         }
-      } else if (category === "音源") {
-        // メドレー・クイズ系を除外し、単一の曲・アーティストを扱った動画を優先する。
-        const candidates = await fetchTrendingVideos(query, TIKTOK_CANDIDATE_SIZE);
-        const singleSongCandidates = candidates.filter((v) => !COMPILATION_TITLE_PATTERN.test(v.title));
-        videos = (singleSongCandidates.length > 0 ? singleSongCandidates : candidates).slice(
-          0,
-          RANKING_SIZE
-        );
       } else {
         videos = await fetchTrendingVideos(query, RANKING_SIZE);
       }
@@ -207,22 +192,9 @@ export async function syncTrends(prisma: PrismaClient): Promise<SyncTrendsResult
           const rankVideo = videos[i];
           const rank = i + 1;
 
-          // 1位はsummarizeYoutubeTrendの結果を流用し、音源の2〜5位のみ軽量抽出を追加で呼ぶ。
-          let artistName: string | null = null;
-          let songTitle: string | null = null;
-          if (category === "音源") {
-            if (i === 0) {
-              artistName = summary.artistName;
-              songTitle = summary.songTitle;
-            } else {
-              const songInfo = await extractSongInfo({
-                videoTitle: rankVideo.title,
-                channelTitle: rankVideo.channelTitle,
-              });
-              artistName = songInfo.artistName;
-              songTitle = songInfo.songTitle;
-            }
-          }
+          // 歌手名・曲名は/songsの専用ランキングで扱うため、TrendRankingでは設定しない。
+          const artistName: string | null = null;
+          const songTitle: string | null = null;
 
           await prisma.trendRanking.upsert({
             where: { category_weekOf_rank: { category, weekOf, rank } },

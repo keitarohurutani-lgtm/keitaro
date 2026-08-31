@@ -96,6 +96,27 @@ model TrendRanking {
   @@index([category, weekOf])
 }
 
+// 音源トレンドの週間ランキング（最大50件）。Trend/TrendRankingとは独立した専用テーブル。
+// 曲名・アーティスト名・YouTubeリンク（MVまたは音源）・主な使用用途（踊ってみた／ネタ系／Vlog系等）
+// を実データ（YouTube Data API）から構成する。TREND側の「音源」カテゴリーは廃止し、
+// こちらの専用ランキングに一本化した。
+model SongRanking {
+  id           String   @id @default(uuid())
+  weekOf       DateTime // 集計対象週の開始日（月曜0時, UTC基準で丸めた値）
+  rank         Int // 1〜50、週内の順位（1が最上位）
+  songTitle    String
+  artistName   String
+  youtubeUrl   String // MVまたは音源のYouTubeリンク
+  usageType    String // 主な使用用途（例: 踊ってみた／ネタ系／Vlog系／その他）
+  thumbnailUrl String?
+  viewCount    Int
+  growth       String // 表示用（例: "12.3万回再生"）
+  fetchedAt    DateTime @default(now())
+
+  @@unique([weekOf, rank])
+  @@index([weekOf])
+}
+
 // AIが生成した投稿企画。generatedByAIがtrueのものはGemini生成、falseは初期シードデータ。
 // userIdで所有者を分離し、他のタレントの企画が見えないようにする。
 model Idea {

@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import type { Persona } from "@/generated/prisma/enums";
 import { PERSONA_LABEL } from "@/lib/persona";
+import { SONG_USAGE_TYPES, type SongUsageType } from "@/lib/data";
 
 // 姉妹プロジェクト（asobisystem-news-app）での動作確認により、無料枠のレート制限が
 // 「1分あたり15リクエスト」で日次カウントではないFlash-Liteが実用的と判明しているため、
@@ -295,44 +296,55 @@ export async function summarizeYoutubeTrend(params: {
   };
 }
 
-export interface SongInfo {
+export interface SongTrendInfo {
   artistName: string | null;
   songTitle: string | null;
+  usageType: SongUsageType | null;
 }
 
-function buildSongInfoSchema() {
+function buildSongTrendSchema() {
   return {
     type: "object",
     properties: {
       artistName: {
         type: "string",
-        description: "動画タイトル・チャンネル名から読み取れる歌手/アーティスト名。読み取れない場合は空文字。",
+        description: "動画タイトル・概要・チャンネル名から読み取れる歌手/アーティスト名。読み取れない場合は空文字。",
       },
       songTitle: {
         type: "string",
-        description: "動画タイトルから読み取れる曲名。読み取れない場合は空文字。",
+        description: "動画タイトル・概要から読み取れる曲名。読み取れない場合は空文字。",
+      },
+      usageType: {
+        type: "string",
+        enum: [...SONG_USAGE_TYPES],
+        description:
+          "この曲が主にどんな投稿で使われそうか、動画タイトル・概要・チャンネル名から判断して1つ選ぶ。ダンス動画なら「踊ってみた」、コント・あるある等のコメディ動画なら「ネタ系」、日常を映すVlog風の動画なら「Vlog系」、判断がつかなければ「その他」。",
       },
     },
-    required: ["artistName", "songTitle"],
+    required: ["artistName", "songTitle", "usageType"],
   };
 }
 
-// 週間ランキングの音源カテゴリー2〜5位用。summarizeYoutubeTrendより軽量な
-// アーティスト名・曲名の抽出のみを行う（1位はsummarizeYoutubeTrendの結果を流用するため呼ばない）。
-export async function extractSongInfo(params: {
+// 音源ランキング（/songs）用。動画タイトル・概要・チャンネル名から、歌手名・曲名・
+// 主な使用用途（踊ってみた／ネタ系／Vlog系／その他）を読み取れる範囲でまとめて抽出する。
+// 書かれていない情報は創作せず空文字/nullにする。
+export async function classifySongTrend(params: {
   videoTitle: string;
+  videoDescription: string;
   channelTitle: string;
-}): Promise<SongInfo> {
+}): Promise<SongTrendInfo> {
   const ai = getAiClient();
 
   const systemInstruction = [
-    "あなたは音源トレンド分析AIです。動画タイトルとチャンネル名から、歌手/アーティスト名と曲名を",
+    "あなたは音源トレンド分析AIです。動画タイトル・概要・チャンネル名から、歌手/アーティスト名と曲名を",
     "読み取れる範囲で抽出してください。書かれていない情報を創作しないでください。",
     "読み取れない場合は空文字にしてください。",
+    "あわせて、この曲が主にどんな投稿で使われそうかを選択肢から1つ選んでください。",
   ].join("\n");
 
   const userPrompt = [
     `【動画タイトル】${params.videoTitle}`,
+    `【動画概要】${params.videoDescription.slice(0, 300)}`,
     `【チャンネル名】${params.channelTitle}`,
   ].join("\n");
 
@@ -343,19 +355,23 @@ export async function extractSongInfo(params: {
     config: {
       systemInstruction,
       thinkingConfig: { thinkingBudget: 0 },
-      maxOutputTokens: 128,
+      maxOutputTokens: 160,
       responseMimeType: "application/json",
-      responseSchema: buildSongInfoSchema(),
+      responseSchema: buildSongTrendSchema(),
     },
   });
 
   const text = response.text;
-  if (!text) return { artistName: null, songTitle: null };
+  if (!text) return { artistName: null, songTitle: null, usageType: null };
   const parsed = JSON.parse(text);
+  const usageType = (SONG_USAGE_TYPES as readonly string[]).includes(parsed.usageType)
+    ? (parsed.usageType as SongUsageType)
+    : null;
 
   return {
     artistName: parsed.artistName ? String(parsed.artistName) : null,
     songTitle: parsed.songTitle ? String(parsed.songTitle) : null,
+    usageType,
   };
 }
 

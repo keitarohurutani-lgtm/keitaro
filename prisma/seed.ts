@@ -33,16 +33,6 @@ const SEED_TRENDS = [
     thumbnailTo: "#0B0B0C",
   },
   {
-    category: "音源",
-    name: "ローファイ切なEDM",
-    description: "サビ前の溜めが強調された楽曲が縦型動画で急増中。",
-    whyHot: "感情の切り替わりが分かりやすく、表情芸と相性がいい。",
-    howToUse: "サビ頭で表情やポーズを切り替える『落差』を作ると伸びやすい。",
-    growth: "+210%",
-    thumbnailFrom: "#7C5CFF",
-    thumbnailTo: "#D4FF3D",
-  },
-  {
     category: "ファッション",
     name: "配色チャレンジ",
     description: "手持ちの服だけで指定カラー3色コーデを即興で組む企画。",
@@ -73,16 +63,6 @@ const SEED_TRENDS = [
     thumbnailTo: "#0B0B0C",
   },
   {
-    category: "音源",
-    name: "新曲サビ縦ダンス",
-    description: "リリース直後の新曲サビ部分をシンプルな振り付けで踊る投稿。",
-    whyHot: "楽曲側のリーチとも重なり、両方のアルゴリズムから流入しやすい。",
-    howToUse: "振りは覚えやすい8カウントに絞り、目線を強めに。",
-    growth: "+183%",
-    thumbnailFrom: "#FF2E8B",
-    thumbnailTo: "#7C5CFF",
-  },
-  {
     category: "SNS",
     name: "縦型ドキュメント投稿",
     description: "1枚の画像に文字を詰め込む『読ませる』フォーマットが復権。",
@@ -106,13 +86,6 @@ const SEED_RANKINGS: Record<
     songTitle?: string;
   }>
 > = {
-  音源: [
-    { title: "新曲サビ縦ダンスチャレンジ", channelTitle: "サンプルアーティストA", viewCount: 452000, artistName: "サンプルアーティストA", songTitle: "夜明けのループ" },
-    { title: "切ないローファイEDMで表情芸", channelTitle: "サンプルアーティストB", viewCount: 318000, artistName: "サンプルアーティストB", songTitle: "サイレントブルー" },
-    { title: "TikTok発バラードが逆輸入ヒット", channelTitle: "サンプルアーティストC", viewCount: 275000, artistName: "サンプルアーティストC", songTitle: "透明な合図" },
-    { title: "8カウントで踊れる新曲サビ", channelTitle: "サンプルアーティストD", viewCount: 198000, artistName: "サンプルアーティストD", songTitle: "リフレイン" },
-    { title: "低音強めのダンスサウンド", channelTitle: "サンプルアーティストE", viewCount: 142000, artistName: "サンプルアーティストE", songTitle: "オーバードライブ" },
-  ],
   TikTok: [
     { title: "リアクション二重投稿フォーマット", channelTitle: "サンプルクリエイターA", viewCount: 389000 },
     { title: "3秒だけ見せる予告カット", channelTitle: "サンプルクリエイターB", viewCount: 301000 },

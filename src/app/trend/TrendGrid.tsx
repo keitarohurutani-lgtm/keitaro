@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Trend, TrendRanking } from "@/generated/prisma/client";
-import { CATEGORIES } from "@/lib/data";
+import { TREND_CATEGORIES } from "@/lib/data";
 import TrendCard from "@/components/TrendCard";
 import { formatWeekLabel } from "@/lib/week";
 
@@ -18,7 +18,7 @@ export default function TrendGrid({
   rankings: TrendRanking[];
   weekStart: Date;
 }) {
-  const [active, setActive] = useState<"すべて" | (typeof CATEGORIES)[number]>("すべて");
+  const [active, setActive] = useState<"すべて" | (typeof TREND_CATEGORIES)[number]>("すべて");
 
   const filtered = active === "すべて" ? trends : trends.filter((t) => t.category === active);
   const activeRankings =
@@ -27,7 +27,7 @@ export default function TrendGrid({
   return (
     <>
       <div className="al-rail mt-6 flex gap-2 overflow-x-auto pb-2">
-        {(["すべて", ...CATEGORIES] as const).map((c) => (
+        {(["すべて", ...TREND_CATEGORIES] as const).map((c) => (
           <button
             key={c}
             onClick={() => setActive(c)}

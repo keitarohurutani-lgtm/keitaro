@@ -7,10 +7,14 @@ export const dynamic = "force-dynamic";
 
 export default async function TrendPage() {
   const weekStart = getWeekStart(new Date());
+  // 「音源」は/songsの専用ランキングに一本化したため、TRENDからは除外する。
   const [trends, rankings] = await Promise.all([
-    prisma.trend.findMany({ orderBy: { fetchedAt: "desc" } }),
+    prisma.trend.findMany({
+      where: { category: { not: "音源" } },
+      orderBy: { fetchedAt: "desc" },
+    }),
     prisma.trendRanking.findMany({
-      where: { weekOf: weekStart },
+      where: { weekOf: weekStart, category: { not: "音源" } },
       orderBy: [{ category: "asc" }, { rank: "asc" }],
     }),
   ]);
@@ -24,7 +28,7 @@ export default async function TrendPage() {
         今、注目されているトレンド
       </h1>
       <p className="mt-2 max-w-xl text-sm text-al-gray-500">
-        SNS・音源・ファッションなど、今伸びている動きをカテゴリー別にチェックできます。カテゴリーを選ぶと週間ランキングも見られます。気になるものはIDEAで企画に変換してみましょう。
+        SNS・ファッション・TikTokなど、今伸びている動きをカテゴリー別にチェックできます。カテゴリーを選ぶと週間ランキングも見られます。気になるものはIDEAで企画に変換してみましょう。音源の週間ランキングはSONGSページへ。
       </p>
 
       <TrendGrid trends={trends} rankings={rankings} weekStart={weekStart} />

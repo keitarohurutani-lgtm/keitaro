@@ -10,6 +10,7 @@
     "postinstall": "prisma generate",
     "seed": "node --import tsx prisma/seed.ts",
     "sync-trends": "node --import tsx scripts/sync-trends.ts",
+    "sync-songs": "node --import tsx scripts/sync-songs.ts",
     "migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
