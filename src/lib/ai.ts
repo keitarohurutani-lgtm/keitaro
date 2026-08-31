@@ -166,6 +166,64 @@ export async function generateIdeaFromTrend(params: {
   };
 }
 
+// IDEAページの「オリジナル指示で作る」用。トレンドを使わず、ユーザー自身の自由な指示文
+// だけから投稿企画を1つ提案する。出力形式・トーンはgenerateIdeaFromTrendと揃える。
+export async function generateIdeaFromPrompt(params: {
+  instruction: string;
+  persona: Persona;
+}): Promise<GeneratedIdea> {
+  const ai = getAiClient();
+
+  const systemInstruction = [
+    "あなたはタレントスクール所属者向けSNS活動支援サービス「ASOBI LAB」のAI企画アシスタントです。",
+    "今回はトレンドデータを使わず、ユーザー自身が入力した自由な指示だけをもとに企画を考えます。",
+    "ユーザーの指示内容を最大限尊重し、それを実際に撮れる具体的な投稿企画に落とし込んでください。",
+    "指示があいまいな場合は、常識的な範囲で自然に補って構いませんが、指示の意図から外れないでください。",
+    "SNSに絶対的な正解はないという前提のもと、断定的に『こうすべき』と言うのではなく、",
+    "『こんな方法もあります』『試してみませんか？』という提案・発見のトーンで書いてください。",
+    "難しい専門用語は避け、10代〜20代のタレント・アイドル志望者・モデル志望者が読んですぐ行動に移せる、",
+    "具体的で前向きな内容にしてください。子どもっぽくなりすぎず、おしゃれでカルチャー感のある言葉選びを意識してください。",
+    "ただし『理由』などの説明文は、専門用語や難しい言い回しを避け、中学生でも意味が分かるくらい",
+    "平易な言葉・短い文で書いてください（企画タイトルなど言葉選びのセンスが大事な部分は今まで通りで構いません）。",
+    "出力は日本語のみ。事実にない過去の実績や数値を創作しないでください。",
+  ].join("\n");
+
+  const userPrompt = [
+    `【ユーザーからの指示】${params.instruction}`,
+    `【企画を提案する相手のキャラクター】${PERSONA_LABEL[params.persona]}`,
+    "上記の指示とキャラクターをもとに、この人に合いそうな『〇〇してみた』形式の投稿企画を1つ提案してください。",
+    "POST PLAN（冒頭1秒・撮影場所・表情・構成・尺・オチ）も具体的に埋めてください。",
+  ].join("\n");
+
+  await pace();
+  const response = await ai.models.generateContent({
+    model: MODEL,
+    contents: userPrompt,
+    config: {
+      systemInstruction,
+      thinkingConfig: { thinkingBudget: 0 },
+      maxOutputTokens: 1024,
+      responseMimeType: "application/json",
+      responseSchema: buildIdeaSchema(),
+    },
+  });
+
+  const text = response.text;
+  if (!text) throw new Error("AIによる企画生成に失敗しました。");
+  const parsed = JSON.parse(text);
+
+  return {
+    title: String(parsed.title ?? ""),
+    reason: String(parsed.reason ?? ""),
+    opening: String(parsed.opening ?? ""),
+    location: String(parsed.location ?? ""),
+    expression: String(parsed.expression ?? ""),
+    structure: String(parsed.structure ?? ""),
+    duration: String(parsed.duration ?? ""),
+    punchline: String(parsed.punchline ?? ""),
+  };
+}
+
 export interface TrendSummary {
   category: string;
   description: string;

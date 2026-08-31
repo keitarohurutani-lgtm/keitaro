@@ -91,13 +91,24 @@ export default async function AdminUserDetailPage({
           <div className="mt-4 space-y-6">
             {ideas.map((idea) => (
               <article key={idea.id} className="al-flyer-card overflow-hidden rounded-2xl">
-                <div className="flex items-center gap-3 border-b-2 border-al-black bg-al-gray-50 px-5 py-3">
-                  <span className="font-display text-[11px] font-bold tracking-widest text-al-gray-400">
-                    TREND
-                  </span>
-                  <CategoryTag category={idea.trend.category} />
-                  <span className="text-sm font-bold">{idea.trend.name}</span>
-                </div>
+                {idea.trend ? (
+                  <div className="flex items-center gap-3 border-b-2 border-al-black bg-al-gray-50 px-5 py-3">
+                    <span className="font-display text-[11px] font-bold tracking-widest text-al-gray-400">
+                      TREND
+                    </span>
+                    <CategoryTag category={idea.trend.category} />
+                    <span className="text-sm font-bold">{idea.trend.name}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 border-b-2 border-al-black bg-al-gray-50 px-5 py-3">
+                    <span className="font-display text-[11px] font-bold tracking-widest text-al-gray-400">
+                      ORIGINAL
+                    </span>
+                    <span className="inline-flex items-center rounded-md bg-al-purple px-2.5 py-1 font-display text-[11px] font-bold uppercase tracking-wide text-white">
+                      オリジナル
+                    </span>
+                  </div>
+                )}
                 <div className="px-5 py-5">
                   <div className="flex flex-wrap items-center gap-2">
                     {idea.persona && (

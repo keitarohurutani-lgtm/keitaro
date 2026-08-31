@@ -142,8 +142,9 @@ model Idea {
   id            String   @id @default(uuid())
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  trendId       String
-  trend         Trend    @relation(fields: [trendId], references: [id], onDelete: Cascade)
+  trendId       String? // トレンドを使わず、ユーザー自身の指示だけで生成した企画はnull
+  trend         Trend?   @relation(fields: [trendId], references: [id], onDelete: Cascade)
+  customPrompt  String? // trendIdがnullの場合、生成のもとになったユーザー自身の指示文
   persona       Persona?
   title         String
   reason        String

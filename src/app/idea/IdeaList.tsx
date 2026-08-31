@@ -7,7 +7,7 @@ import CategoryTag from "@/components/CategoryTag";
 import SaveIdeaButton from "@/components/SaveIdeaButton";
 import { PERSONA_LABEL } from "@/lib/persona";
 
-type IdeaWithTrend = Idea & { trend: Trend };
+type IdeaWithTrend = Idea & { trend: Trend | null };
 
 type Filter = "all" | "saved";
 
@@ -57,17 +57,35 @@ export default function IdeaList({ ideas }: { ideas: IdeaWithTrend[] }) {
             id={idea.id}
             className="al-flyer-card scroll-mt-24 overflow-hidden rounded-2xl"
           >
-            {/* TREND */}
-            <div className="flex items-center gap-3 border-b-2 border-al-black bg-al-gray-50 px-5 py-3">
-              <span className="font-display text-[11px] font-bold tracking-widest text-al-gray-400">
-                TREND
-              </span>
-              <CategoryTag category={idea.trend.category} />
-              <span className="text-sm font-bold">{idea.trend.name}</span>
-              <span className="ml-auto -rotate-3 rounded-full border-2 border-al-lime bg-al-black px-2 py-0.5 font-display text-xs font-bold text-al-lime">
-                {idea.trend.growth}
-              </span>
-            </div>
+            {/* TREND or ORIGINAL */}
+            {idea.trend ? (
+              <div className="flex items-center gap-3 border-b-2 border-al-black bg-al-gray-50 px-5 py-3">
+                <span className="font-display text-[11px] font-bold tracking-widest text-al-gray-400">
+                  TREND
+                </span>
+                <CategoryTag category={idea.trend.category} />
+                <span className="text-sm font-bold">{idea.trend.name}</span>
+                <span className="ml-auto -rotate-3 rounded-full border-2 border-al-lime bg-al-black px-2 py-0.5 font-display text-xs font-bold text-al-lime">
+                  {idea.trend.growth}
+                </span>
+              </div>
+            ) : (
+              <div className="border-b-2 border-al-black bg-al-gray-50 px-5 py-3">
+                <div className="flex items-center gap-3">
+                  <span className="font-display text-[11px] font-bold tracking-widest text-al-gray-400">
+                    ORIGINAL
+                  </span>
+                  <span className="inline-flex items-center rounded-md bg-al-purple px-2.5 py-1 font-display text-[11px] font-bold uppercase tracking-wide text-white">
+                    オリジナル
+                  </span>
+                </div>
+                {idea.customPrompt && (
+                  <p className="mt-1.5 text-xs leading-relaxed text-al-gray-500">
+                    あなたの指示：「{idea.customPrompt}」
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* YOUR IDEA */}
             <div className="px-5 py-5">

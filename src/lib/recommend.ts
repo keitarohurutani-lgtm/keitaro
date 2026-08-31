@@ -37,7 +37,8 @@ export async function getPlaybookRecommendations(userId: string): Promise<Playbo
   // AI企画生成（トレンド閲覧のついでの可能性もある）より重みを大きくする。
   const affinity = new Map<Category, number>();
   for (const idea of ideas) {
-    if (isCategory(idea.trend.category)) {
+    // オリジナル指示から生成した企画（trendがnull）はカテゴリーが分からないため対象外。
+    if (idea.trend && isCategory(idea.trend.category)) {
       affinity.set(idea.trend.category, (affinity.get(idea.trend.category) ?? 0) + 1);
     }
   }

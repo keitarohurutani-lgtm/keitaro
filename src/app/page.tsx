@@ -50,7 +50,9 @@ export default async function TodayPage() {
             {latestIdea ? (
               <>
                 <p className="text-base leading-relaxed text-al-gray-300 md:text-lg">
-                  最近、{latestIdea.trend.name}系の投稿が伸びています。
+                  {latestIdea.trend
+                    ? `最近、${latestIdea.trend.name}系の投稿が伸びています。`
+                    : "あなたの指示から企画を考えました。"}
                 </p>
                 <p className="font-display text-xl font-bold leading-snug text-white md:text-2xl">
                   あなたのキャラクターなら、『{latestIdea.title}』企画がおすすめです。
