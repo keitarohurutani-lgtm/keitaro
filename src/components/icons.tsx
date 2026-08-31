@@ -86,6 +86,15 @@ export function IconFaq({ className }: IconProps) {
   );
 }
 
+export function IconGuide({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...base}>
+      <path d="M12 6c-1.5-1.3-3.5-2-6-2v13c2.5 0 4.5.7 6 2 1.5-1.3 3.5-2 6-2V4c-2.5 0-4.5.7-6 2Z" />
+      <path d="M12 6v13" />
+    </svg>
+  );
+}
+
 export const navIcons: Record<string, (p: IconProps) => React.ReactElement> = {
   TODAY: IconToday,
   TREND: IconTrend,
@@ -96,4 +105,5 @@ export const navIcons: Record<string, (p: IconProps) => React.ReactElement> = {
   "MY REPORT": IconReport,
   MY: IconReport,
   FAQ: IconFaq,
+  GUIDE: IconGuide,
 };

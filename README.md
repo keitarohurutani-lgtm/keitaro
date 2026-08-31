@@ -145,5 +145,9 @@ src/app/login/, src/app/register/   ログイン・新規登録ページ
 src/app/api/auth/             ログイン・登録・ログアウトのAPI Routes
 src/app/api/                  生成・保存トグル・アクティビティ記録のAPI Routes
 src/app/api/health/           ヘルスチェック用エンドポイント
-src/app/{page,trend,songs,playbook,idea,analyze,report}/  各ページ
+src/app/{page,trend,songs,playbook,idea,analyze,report,faq,guide}/  各ページ
 ```
+
+## GUIDE（使い方ガイド）について
+
+`/guide`は、ASOBI LABの各機能（TODAY/TREND/SONGS/PLAYBOOK/IDEA/ANALYZE/MY REPORT/FAQ）を1画面でまとめた使い方ガイドです（`src/app/guide/page.tsx`）。DB接続やAI呼び出しはなく、固定テキストのみの静的ページです。各カードはそのままその機能のページへのリンクになっています。文言は誰でも分かるよう平易な言葉でまとめています。
