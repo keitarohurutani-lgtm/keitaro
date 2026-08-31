@@ -65,6 +65,12 @@ IDEAページの「AIに企画を提案してもらう」は `src/lib/ai.ts` の
 
 （旧BENCHMARK機能・2本の動画を比較する機能は削除しました。）
 
+## PLAYBOOK（ネタ集）について
+
+`/playbook`は、スマホ1台で真似できる投稿の「型」を210個（7カテゴリー×30個）まとめた固定コンテンツです（`src/lib/playbook.ts`）。特定の実在トレンド動画には依存させず、時間が経っても内容が古くならない汎用フォーマットとして用意しています。カテゴリーを選ぶと、そのジャンルで今実際に伸びている実データ（Trend）もあわせて表示されます。
+
+会員は各ネタの☆をタップしてお気に入り登録できます（`PlaybookFavorite`テーブル、`POST /api/playbook/[id]/favorite`でトグル）。お気に入りは会員ごとに保存され、「★ お気に入り」タブで絞り込んで見返せます。
+
 ## デプロイ（Vercel + Neon、完全無料・永続）
 
 DBはNeon（サーバーレスPostgres、無料枠が永続的でカード登録不要）、ホスティングはVercel Hobbyプラン（無料・カード登録不要）を使います。どちらもトライアルではなく恒久的な無料枠です。
@@ -98,7 +104,7 @@ Push するとVercelがビルド（`next build`）し、自動でデプロイさ
 ## 主なディレクトリ
 
 ```
-prisma/schema.prisma       DBスキーマ（User / Trend / TrendRanking / SongRanking / Idea / Activity）
+prisma/schema.prisma       DBスキーマ（User / Trend / TrendRanking / SongRanking / Idea / Activity / PlaybookFavorite）
 prisma/seed.ts              初期トレンド・週間ランキングのシード
 scripts/sync-trends.ts      YouTube実データ同期スクリプト（手動CLI）
 scripts/sync-songs.ts       音源週間ランキング同期スクリプト（手動CLI）

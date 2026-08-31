@@ -41,8 +41,9 @@ model User {
   displayName  String
   createdAt    DateTime @default(now())
 
-  ideas      Idea[]
-  activities Activity[]
+  ideas             Idea[]
+  activities        Activity[]
+  playbookFavorites PlaybookFavorite[]
 }
 
 // トレンド情報。SEED=初期投入データ、YOUTUBE=YouTube Data APIから同期。
@@ -119,6 +120,20 @@ model SongRanking {
 
   @@unique([weekOf, usageType, rank])
   @@index([weekOf])
+}
+
+// PLAYBOOK（ネタ集）のお気に入り。ネタ自体は固定データ（src/lib/playbook.ts）でDB行を
+// 持たないため、userId + playbookIdeaId（PlaybookIdea.idと同じ文字列）の組でお気に入り
+// 状態だけを記録する中間テーブル。
+model PlaybookFavorite {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  playbookIdeaId String // src/lib/playbook.ts の PlaybookIdea.id
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, playbookIdeaId])
+  @@index([userId])
 }
 
 // AIが生成した投稿企画。generatedByAIがtrueのものはGemini生成、falseは初期シードデータ。
